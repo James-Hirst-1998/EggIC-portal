@@ -180,8 +180,11 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .centered { display: grid; place-items: center; height: 100%; text-align: center;
               color: var(--dim); font-size: 13.5px; gap: 12px; }
-  .wake-note { max-width: 30ch; font-size: 12.5px; line-height: 1.5; color: var(--dim);
+  .wake-note { max-width: 34ch; font-size: 12.5px; line-height: 1.55; color: var(--dim);
                border-top: 1px solid var(--line); padding-top: 12px; }
+  .wake-note strong { color: var(--fg); font-weight: 600; }
+  .wake-fine { display: block; margin-top: 8px; font-size: 11px; line-height: 1.5;
+               opacity: .75; }
 
   @media (max-width: 880px) {
     body { overflow: auto; }
@@ -457,8 +460,12 @@ function renderPanel() {
     // The model sleeps when unused, so the first call of a session waits on it
     // waking. Saying so up front stops it reading as a hang.
     const wakeNote = (!firstDone && item.state === 'running')
-      ? `<div class="wake-note">The first photograph can take up to 30 seconds
-           while the model wakes up. The rest are near-instant.</div>`
+      ? `<div class="wake-note">
+           <strong>The first photograph in a batch can take up to 30 seconds</strong>
+           while the model wakes up. Every photograph after it comes back in about a second.
+           <span class="wake-fine">This demo runs on hardware that sleeps when nobody is
+           using it, to keep costs down. Deployed in-house, the wait disappears entirely.</span>
+         </div>`
       : '';
     panel.innerHTML = `<div class="centered"><div class="spinner"></div>
       <div>${item.state === 'running' ? 'Identifying…' : 'Queued'}</div>${wakeNote}</div>`;
