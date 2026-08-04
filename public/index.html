@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shark Trust — Egg Case Identifier</title>
+<link rel="icon" href="/assets/shark_trust.png">
+<style>
+  /* Light is the default; the toggle stamps data-theme="dark" on <html>. */
+  :root {
+    --bg:#ffffff; --panel:#f5f7f7; --fg:#101d1c; --dim:#5c6b69;
+    --line:#e2e7e6; --accent:#08807f; --accent-soft:#e8f3f2; --amber:#8a5d00;
+    --bad:#a8342a; --plate:#ffffff; --ring:rgba(8,128,127,.35);
+    /* Solid fills for selected buttons — the theme accents are too light for white text. */
+    --accent-solid:#08807f; --bad-solid:#a8342a;
+  }
+  :root[data-theme="dark"] {
+    --bg:#0d1312; --panel:#151c1b; --fg:#e7ecea; --dim:#94a3a1; --line:#242f2d;
+    --accent:#54bcb9; --accent-soft:#112b2a; --amber:#d8a63a; --bad:#e08b83;
+    --plate:#ffffff; --ring:rgba(84,188,185,.4);
+    --accent-solid:#0d6f6d; --bad-solid:#9d332a;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); overflow: hidden;
+    font: 15px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column; -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: inherit; }
+  a { color: var(--accent); }
+
+  /* ---------- header ---------- */
+  header {
+    flex: none; display: flex; align-items: center; gap: 13px;
+    padding: 10px 22px; border-bottom: 1px solid var(--line);
+  }
+  header .logo { height: 44px; width: auto; background: var(--plate);
+                 border-radius: 5px; padding: 3px; flex: none; }
+  .brand { display: flex; flex-direction: column; line-height: 1.25; }
+  .brand .org { font-size: 11px; font-weight: 700; letter-spacing: .13em;
+                text-transform: uppercase; color: var(--accent); }
+  .brand h1 { font-size: 16px; font-weight: 600; margin: 0; }
+  header .grow { flex: 1; }
+  #progress { font-size: 12.5px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .hbtn {
+    flex: none; background: none; border: 1px solid var(--line); color: var(--dim);
+    border-radius: 8px; height: 32px; padding: 0 12px; cursor: pointer; font-size: 13px;
+    display: grid; place-items: center;
+  }
+  .hbtn:hover { border-color: var(--accent); color: var(--accent); }
+  #theme { width: 32px; padding: 0; font-size: 14px; }
+
+  main { flex: 1; min-height: 0; padding: 18px 22px; }
+
+  /* ---------- intro ---------- */
+  #intro { height: 100%; display: grid; place-items: center; }
+  #intro .inner { width: min(620px, 100%); text-align: center; }
+  .lede { font-size: 21px; line-height: 1.4; font-weight: 500; letter-spacing: -.012em;
+          margin: 0 0 8px; }
+  .lede-sub { font-size: 14px; color: var(--dim); margin: 0 0 24px; }
+  #drop {
+    display: block; width: 100%; border: 1.5px dashed var(--line); border-radius: 16px;
+    padding: 34px 24px; cursor: pointer; background: var(--panel);
+    transition: border-color .15s, background .15s;
+  }
+  #drop:hover, #drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  #drop strong { display: block; font-size: 17px; font-weight: 600; margin-bottom: 5px; }
+  #drop span { display: block; font-size: 13px; color: var(--dim); }
+  .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }
+  .fact { border: 1px solid var(--line); border-radius: 11px; padding: 11px 12px;
+          background: var(--bg); }
+  .fact .big { font-size: 20px; font-weight: 650; letter-spacing: -.02em; line-height: 1.15; }
+  .fact .cap { font-size: 11.5px; color: var(--dim); margin-top: 2px; }
+  .more { margin-top: 18px; font-size: 13.5px; }
+  #error { display: none; color: var(--bad); font-size: 13.5px; margin-top: 12px; }
+  input[type=file] { display: none; }
+
+  /* ---------- review ---------- */
+  #review { display: none; height: 100%; grid-template-columns: minmax(0,1.1fr) minmax(330px,.9fr);
+            gap: 24px; }
+  #review.show { display: grid; }
+
+  .stage { min-height: 0; display: grid; grid-template-rows: auto 1fr auto; gap: 10px; }
+
+  .filebar { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .filebar .fname {
+    font: 600 14.5px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .filebar .of { font-size: 12.5px; color: var(--dim); flex: none;
+                 font-variant-numeric: tabular-nums; }
+
+  /* Absolute fill is the only way the photo is guaranteed to fit both dimensions —
+     max-height:100% inside a grid track sizes itself circularly and overflows. */
+  .frame { position: relative; min-height: 0; border-radius: 14px;
+           background: var(--panel); overflow: hidden; }
+  .frame img { position: absolute; inset: 0; width: 100%; height: 100%;
+               object-fit: contain; }
+  .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 34px;
+         border-radius: 50%; border: 1px solid var(--line); background: var(--bg);
+         color: var(--fg); cursor: pointer; display: grid; place-items: center;
+         font-size: 15px; opacity: .92; z-index: 2; }
+  .nav:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .nav:disabled { opacity: .25; cursor: default; }
+  .nav.prev { left: 10px; } .nav.next { right: 10px; }
+
+  .strip { display: flex; gap: 8px; overflow-x: auto; padding: 2px; flex: none; }
+  .thumb { position: relative; width: 56px; height: 56px; border-radius: 9px; flex: none;
+           background-size: cover; background-position: center; cursor: pointer;
+           border: 2px solid transparent; outline: 1px solid var(--line); outline-offset: -1px; }
+  .thumb.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+  .thumb .badge { position: absolute; right: -3px; bottom: -3px; width: 17px; height: 17px;
+                  border-radius: 50%; display: grid; place-items: center; font-size: 10px;
+                  font-weight: 700; color: #fff; border: 2px solid var(--bg); }
+  .badge.ok { background: var(--accent-solid); } .badge.no { background: var(--bad-solid); }
+  .badge.wait { background: var(--dim); } .badge.err { background: var(--bad-solid); }
+  .thumb.pending { opacity: .5; }
+
+  .panel { min-height: 0; overflow-y: auto; padding-right: 4px; }
+  .verdict { border: 1px solid var(--line); border-left: 3px solid var(--dim);
+             border-radius: 12px; padding: 15px 17px; margin-bottom: 16px; }
+  .verdict.confident { background: var(--accent-soft); border-color: var(--accent-soft);
+                       border-left-color: var(--accent); }
+  .verdict .lead { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em;
+                   color: var(--dim); font-weight: 700; }
+  .verdict .name { font-size: 25px; font-weight: 650; margin: 4px 0 1px; line-height: 1.15; }
+  .verdict .latin { font-style: italic; color: var(--dim); font-size: 13.5px; }
+  .verdict .note { font-size: 13px; color: var(--dim); margin-top: 9px; }
+
+  h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim);
+       font-weight: 700; margin: 0 0 6px; }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 3px 12px;
+         padding: 8px 0; border-top: 1px solid var(--line); }
+  .row:first-child { border-top: none; }
+  .row .label { font-size: 14px; }
+  .row .latin { font-style: italic; color: var(--dim); font-size: 12px; }
+  .row .pct { font-variant-numeric: tabular-nums; font-size: 14px; color: var(--dim);
+              align-self: center; }
+  .bar { grid-column: 1/-1; height: 3px; background: var(--line); border-radius: 2px; }
+  .bar span { display: block; height: 100%; background: var(--dim); border-radius: 2px; }
+  .row.top .bar span { background: var(--accent); }
+
+  details { margin-top: 10px; }
+  details summary { font-size: 13px; color: var(--accent); cursor: pointer; list-style: none;
+                    padding: 5px 0; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: "▸ "; }
+  details[open] summary::before { content: "▾ "; }
+
+  .feedback { margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--line); }
+  .fb-buttons { display: flex; gap: 8px; }
+  .fb-buttons button { flex: 1; padding: 9px 12px; border-radius: 9px; font-size: 13.5px;
+                       border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+                       cursor: pointer; }
+  .fb-buttons button:hover { border-color: var(--accent); }
+  .fb-buttons button.on[data-correct="yes"] { background: var(--accent-solid);
+                       border-color: var(--accent-solid); color: #fff; }
+  .fb-buttons button.on[data-correct="no"] { background: var(--bad-solid);
+                       border-color: var(--bad-solid); color: #fff; }
+  .fb-buttons kbd { font: inherit; font-size: 11px; opacity: .6; margin-left: 4px; }
+  #correction { display: none; margin-top: 12px; }
+  #correction.show { display: block; }
+  #correction label { display: block; font-size: 12.5px; font-weight: 600;
+                      color: var(--dim); margin-bottom: 5px; }
+  #true-species { width: 100%; padding: 9px 10px; border-radius: 9px;
+                  border: 1px solid var(--line); background: var(--bg);
+                  color: var(--fg); font-size: 13.5px; }
+  #true-species:focus { outline: 2px solid var(--ring); border-color: var(--accent); }
+  .fb-hint { font-size: 12px; color: var(--dim); margin-top: 9px; }
+
+  .banner { flex: none; margin: 0 22px 10px; padding: 8px 13px; border-radius: 9px;
+            font-size: 12.5px; border: 1px solid var(--amber); color: var(--amber);
+            display: none; }
+  .banner.show { display: block; }
+
+  .spinner { width: 24px; height: 24px; border: 2.5px solid var(--line);
+             border-top-color: var(--accent); border-radius: 50%;
+             animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .centered { display: grid; place-items: center; height: 100%; text-align: center;
+              color: var(--dim); font-size: 13.5px; gap: 12px; }
+
+  @media (max-width: 880px) {
+    body { overflow: auto; }
+    #review.show { grid-template-columns: 1fr; }
+    .stage { grid-template-rows: auto 52vh auto; }
+    .panel { overflow: visible; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img class="logo" src="/assets/shark_trust.png" alt="Shark Trust" onerror="this.remove()">
+  <div class="brand">
+    <span class="org">Shark Trust</span>
+    <h1>Egg Case Identifier</h1>
+  </div>
+  <div class="grow"></div>
+  <span id="progress"></span>
+  <button class="hbtn" id="restart" type="button" style="display:none">New batch</button>
+  <button class="hbtn" id="theme" type="button" title="Switch theme" aria-label="Switch theme">◐</button>
+</header>
+
+<div class="banner" id="banner"></div>
+
+<main>
+  <section id="intro">
+    <div class="inner">
+      <p class="lede">Identify which species laid an egg case, from a single photograph.</p>
+      <p class="lede-sub">Trained on nine UK species. Every answer comes with a confidence.</p>
+
+      <label id="drop" for="file">
+        <strong>Drop egg case photos here</strong>
+        <span>or click to choose — up to 10 at a time</span>
+      </label>
+      <input type="file" id="file" accept="image/*" multiple>
+
+      <div class="facts">
+        <div class="fact"><div class="big">9</div><div class="cap">species covered</div></div>
+        <div class="fact"><div class="big">13,054</div><div class="cap">photographs learned from</div></div>
+        <div class="fact"><div class="big">85%</div><div class="cap">confidence to accept a call</div></div>
+      </div>
+
+      <p class="more"><a href="/about">How the model works, and when to trust it →</a></p>
+      <div id="error"></div>
+    </div>
+  </section>
+
+  <section id="review">
+    <div class="stage">
+      <div class="filebar">
+        <span class="fname" id="fname"></span>
+        <span class="of" id="of"></span>
+      </div>
+      <div class="frame">
+        <img id="preview" alt="">
+        <button class="nav prev" id="prev" type="button" aria-label="Previous">‹</button>
+        <button class="nav next" id="next" type="button" aria-label="Next">›</button>
+      </div>
+      <div class="strip" id="strip"></div>
+    </div>
+    <aside class="panel" id="panel"></aside>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const MAX_BATCH = 10;
+
+// Alphabetical and fixed, so the correction list does not reshuffle per photo.
+const SPECIES = [
+  {key: 'BlondeRay',            name: 'Blonde Ray',            latin: 'Raja brachyura'},
+  {key: 'CuckooRay',            name: 'Cuckoo Ray',            latin: 'Leucoraja naevus'},
+  {key: 'FlapperSkate',         name: 'Flapper Skate',         latin: 'Dipturus intermedius'},
+  {key: 'Nursehound',           name: 'Nursehound',            latin: 'Scyliorhinus stellaris'},
+  {key: 'SmallEyedRay',         name: 'Small-eyed Ray',        latin: 'Raja microocellata'},
+  {key: 'SmallSpottedCatshark', name: 'Small-spotted Catshark', latin: 'Scyliorhinus canicula'},
+  {key: 'SpottedRay',           name: 'Spotted Ray',           latin: 'Raja montagui'},
+  {key: 'ThornbackRay',         name: 'Thornback Ray',         latin: 'Raja clavata'},
+  {key: 'UndulateRay',          name: 'Undulate Ray',          latin: 'Raja undulata'},
+];
+
+const drop = $('drop'), fileInput = $('file'), intro = $('intro'), review = $('review');
+let items = [];      // {name, file, dataUrl, state, result, error, feedback:{correct,label}, stored}
+let current = 0;
+
+/* ---------- theme ---------- */
+if (localStorage.getItem('eggic-theme') === 'dark') document.documentElement.dataset.theme = 'dark';
+$('theme').addEventListener('click', () => {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  if (dark) delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = 'dark';
+  localStorage.setItem('eggic-theme', dark ? 'light' : 'dark');
+});
+
+$('restart').addEventListener('click', () => {
+  items = []; current = 0;
+  fileInput.value = '';
+  review.classList.remove('show');
+  intro.style.display = 'grid';
+  $('banner').classList.remove('show');
+  $('progress').textContent = '';
+  $('restart').style.display = 'none';
+});
+
+/* ---------- input ---------- */
+drop.addEventListener('dragenter', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', e => {
+  if (!drop.contains(e.relatedTarget)) drop.classList.remove('over');
+});
+drop.addEventListener('drop', e => {
+  e.preventDefault(); drop.classList.remove('over');
+  accept([...e.dataTransfer.files].filter(f => f.type.startsWith('image/')));
+});
+// Without this the browser navigates away to any photo dropped outside the target.
+['dragover', 'drop'].forEach(evt => window.addEventListener(evt, e => e.preventDefault()));
+fileInput.addEventListener('change', () => accept([...fileInput.files]));
+
+document.addEventListener('keydown', e => {
+  if (!review.classList.contains('show') || e.target.tagName === 'SELECT') return;
+  if (e.key === 'ArrowLeft') go(current - 1);
+  else if (e.key === 'ArrowRight') go(current + 1);
+  else if (e.key.toLowerCase() === 'y') mark(true);
+  else if (e.key.toLowerCase() === 'n') mark(false);
+});
+
+function accept(files) {
+  $('error').style.display = 'none';
+  if (!files.length) return;
+
+  // The file picker has no way to cap selection, so the cap is enforced here and
+  // the dropped extras are named rather than silently vanishing.
+  const banner = $('banner');
+  if (files.length > MAX_BATCH) {
+    const extra = files.length - MAX_BATCH;
+    banner.textContent =
+      `${files.length} photos selected — testing the first ${MAX_BATCH}, ` +
+      `${extra} not uploaded (${files.slice(MAX_BATCH).map(f => f.name).join(', ')}). ` +
+      `Ten at a time is a limit of this testing build, not the model.`;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+
+  items = files.slice(0, MAX_BATCH).map(f => ({
+    name: f.name, file: f, dataUrl: null, state: 'queued',
+    result: null, error: null, feedback: {correct: null, label: null}, stored: undefined,
+  }));
+  current = 0;
+  intro.style.display = 'none';
+  review.classList.add('show');
+  $('restart').style.display = 'grid';
+  renderAll();
+  runBatch();
+}
+
+/* The model sees 448px, so sending a 12MP original only makes the user wait on
+   their own upload bandwidth. */
+function prepare(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const max = 1024, scale = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * scale);
+      c.height = Math.round(img.height * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.92));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Not a readable image.')); };
+    img.src = url;
+  });
+}
+
+/* One at a time: the model serves one request at a time anyway, and results appear
+   as they land so review can start on the first photo immediately. */
+async function runBatch() {
+  for (const [i, item] of items.entries()) {
+    item.state = 'running';
+    updateProgress(); renderStrip(); if (i === current) renderPanel();
+    try {
+      item.dataUrl = await prepare(item.file);
+      if (i === current) showPhoto();
+      renderStrip();
+      const res = await fetch('/api/predict', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({image: item.dataUrl, filename: item.name}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      item.result = data; item.state = 'done';
+    } catch (err) {
+      item.error = err.message; item.state = 'error';
+    }
+    updateProgress(); renderStrip(); if (i === current) renderPanel();
+  }
+  updateProgress();
+}
+
+function updateProgress() {
+  const running = items.findIndex(i => i.state === 'running');
+  $('progress').textContent = running === -1
+    ? (items.length > 1 ? `${items.length} photos` : '')
+    : `Identifying ${running + 1} of ${items.length}…`;
+}
+
+/* ---------- navigation ---------- */
+function go(i) {
+  if (i < 0 || i >= items.length) return;
+  current = i;
+  renderAll();
+}
+$('prev').addEventListener('click', () => go(current - 1));
+$('next').addEventListener('click', () => go(current + 1));
+
+function renderAll() { showPhoto(); renderStrip(); renderPanel(); }
+
+function showPhoto() {
+  const item = items[current];
+  $('preview').src = item.dataUrl || '';
+  $('preview').alt = item.name;
+  $('fname').textContent = item.name;
+  $('of').textContent = items.length > 1 ? `${current + 1} of ${items.length}` : '';
+  $('prev').disabled = current === 0;
+  $('next').disabled = current === items.length - 1;
+  const single = items.length < 2;
+  $('prev').style.display = $('next').style.display = single ? 'none' : 'grid';
+  $('strip').style.display = single ? 'none' : 'flex';
+}
+
+function renderStrip() {
+  $('strip').innerHTML = items.map((item, i) => {
+    const fb = item.feedback.correct;
+    let badge = '';
+    if (item.state === 'error') badge = '<div class="badge err">!</div>';
+    else if (item.state !== 'done') badge = '<div class="badge wait">·</div>';
+    else if (fb === true) badge = '<div class="badge ok">✓</div>';
+    else if (fb === false) badge = '<div class="badge no">✕</div>';
+    return `<div class="thumb${i === current ? ' active' : ''}${item.state === 'done' ? '' : ' pending'}"
+                 data-i="${i}" title="${item.name}"
+                 style="background-image:url('${item.dataUrl || ''}')">${badge}</div>`;
+  }).join('');
+  [...$('strip').children].forEach(el =>
+    el.addEventListener('click', () => go(+el.dataset.i)));
+}
+
+/* ---------- result panel ---------- */
+function rowHtml(r, isTop) {
+  const pct = (r.prob * 100).toFixed(1);
+  return `<div class="row${isTop ? ' top' : ''}">
+    <div><div class="label">${r.name}</div><div class="latin">${r.latin}</div></div>
+    <div class="pct">${pct}%</div>
+    <div class="bar"><span style="width:${pct}%"></span></div>
+  </div>`;
+}
+
+function renderPanel() {
+  const item = items[current];
+  const panel = $('panel');
+
+  if (item.state === 'error') {
+    panel.innerHTML = `<div class="centered"><div>
+      <p style="color:var(--bad)">Could not identify this photo.</p>
+      <p>${item.error}</p></div></div>`;
+    return;
+  }
+  if (item.state !== 'done') {
+    panel.innerHTML = `<div class="centered"><div class="spinner"></div>
+      <div>${item.state === 'running' ? 'Identifying…' : 'Queued'}</div></div>`;
+    return;
+  }
+
+  const d = item.result, top = d.ranked[0], pct = (top.prob * 100).toFixed(0);
+  const rest = d.ranked.slice(3);
+  const fb = item.feedback;
+
+  panel.innerHTML = `
+    <div class="verdict ${d.confident ? 'confident' : ''}">
+      <div class="lead">${d.confident ? 'Identified' : 'Best guess only'}</div>
+      <div class="name">${top.name}</div>
+      <div class="latin">${top.latin}</div>
+      <div class="note">${d.confident
+        ? `${pct}% confident.`
+        : `${pct}% confident — not enough to call it. Compare the alternatives below.`}
+      </div>
+    </div>
+
+    <h2>Most likely</h2>
+    <div>${d.ranked.slice(0, 3).map((r, i) => rowHtml(r, i === 0)).join('')}</div>
+    <details><summary>Show the other ${rest.length} species</summary>
+      <div>${rest.map(r => rowHtml(r, false)).join('')}</div>
+    </details>
+
+    <div class="feedback">
+      <h2>Was this right?</h2>
+      <div class="fb-buttons">
+        <button type="button" data-correct="yes" class="${fb.correct === true ? 'on' : ''}">
+          Correct<kbd>Y</kbd></button>
+        <button type="button" data-correct="no" class="${fb.correct === false ? 'on' : ''}">
+          Not correct<kbd>N</kbd></button>
+      </div>
+      <div id="correction" class="${fb.correct === false ? 'show' : ''}">
+        <label for="true-species">Choose the correct species</label>
+        <select id="true-species">
+          <option value="">Select a species…</option>
+          ${SPECIES.map(s => `<option value="${s.key}"${fb.label === s.key ? ' selected' : ''}>${s.name} — ${s.latin}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fb-hint" id="fb-hint"></div>
+    </div>`;
+
+  panel.querySelectorAll('.fb-buttons button').forEach(b =>
+    b.addEventListener('click', () => mark(b.dataset.correct === 'yes')));
+  const sel = $('true-species');
+  if (sel) sel.addEventListener('change', () => {
+    const it = items[current];
+    it.feedback.label = sel.value || null;
+    renderStrip();
+    sendFeedback(it);
+    if (sel.value && current < items.length - 1) setTimeout(() => go(current + 1), 250);
+  });
+  showHint(item);
+}
+
+function showHint(item) {
+  const hint = $('fb-hint');
+  if (!hint) return;
+  if (item.feedback.correct === null) hint.textContent = '';
+  else if (item.stored === true) hint.textContent = 'Saved.';
+  else if (item.stored === false) hint.textContent = `Not saved — ${item.storedReason || 'no submission on record'}.`;
+  else hint.textContent = 'Saving…';
+}
+
+function mark(correct) {
+  const item = items[current];
+  if (item.state !== 'done') return;
+  item.feedback.correct = correct;
+  // "Correct" is self-describing; "not correct" waits for the species picker.
+  item.feedback.label = correct ? item.result.top : null;
+  renderStrip(); renderPanel();
+  sendFeedback(item);
+  if (correct && current < items.length - 1) setTimeout(() => go(current + 1), 250);
+}
+
+async function sendFeedback(item) {
+  item.stored = undefined;
+  showHint(item);
+  try {
+    const res = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        id: item.result.id,
+        correct: item.feedback.correct,
+        user_species: item.feedback.label,
+      }),
+    });
+    const data = await res.json();
+    item.stored = !!data.stored;
+    item.storedReason = data.reason || data.error || null;
+  } catch (err) {
+    item.stored = false;
+    item.storedReason = err.message;
+  }
+  showHint(item);
+}
+</script>
+</body>
+</html>

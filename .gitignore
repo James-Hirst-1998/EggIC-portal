@@ -1,0 +1,8 @@
+.env
+.env.local
+.vercel
+__pycache__/
+*.pyc
+inbox/
+*.pt
+.DS_Store

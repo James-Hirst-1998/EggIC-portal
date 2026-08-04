@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How it works — Shark Trust Egg Case Identifier</title>
+<link rel="icon" href="/assets/shark_trust.png">
+<style>
+  :root {
+    --bg:#ffffff; --panel:#f5f7f7; --fg:#101d1c; --dim:#5c6b69;
+    --line:#e2e7e6; --accent:#08807f; --accent-soft:#e8f3f2; --amber:#8a5d00;
+    --plate:#ffffff;
+  }
+  :root[data-theme="dark"] {
+    --bg:#0d1312; --panel:#151c1b; --fg:#e7ecea; --dim:#94a3a1; --line:#242f2d;
+    --accent:#54bcb9; --accent-soft:#112b2a; --amber:#d8a63a; --plate:#ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15.5px/1.65 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+
+  header {
+    display: flex; align-items: center; gap: 13px; padding: 10px 22px;
+    border-bottom: 1px solid var(--line); position: sticky; top: 0;
+    background: var(--bg); z-index: 5;
+  }
+  header .logo { height: 44px; width: auto; background: var(--plate);
+                 border-radius: 5px; padding: 3px; flex: none; }
+  .brand { display: flex; flex-direction: column; line-height: 1.25; }
+  .brand .org { font-size: 11px; font-weight: 700; letter-spacing: .13em;
+                text-transform: uppercase; color: var(--accent); }
+  .brand h1 { font-size: 16px; font-weight: 600; margin: 0; }
+  header .grow { flex: 1; }
+  .hbtn { background: none; border: 1px solid var(--line); color: var(--dim);
+          border-radius: 8px; height: 32px; padding: 0 12px; cursor: pointer;
+          font: inherit; font-size: 13px; display: inline-grid; place-items: center;
+          text-decoration: none; }
+  .hbtn:hover { border-color: var(--accent); color: var(--accent); }
+
+  main { max-width: 860px; margin: 0 auto; padding: 40px 24px 90px; }
+
+  .lede { font-size: 20px; line-height: 1.5; margin: 0 0 10px; font-weight: 500;
+          letter-spacing: -.01em; }
+  .lede-sub { color: var(--dim); margin: 0 0 44px; font-size: 15.5px; }
+
+  section { margin-bottom: 48px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .09em; color: var(--accent);
+       font-weight: 700; margin: 0 0 14px; }
+  h3 { font-size: 16px; font-weight: 600; margin: 26px 0 6px; }
+  p { margin: 0 0 14px; }
+  p.tight { margin-bottom: 6px; }
+
+  .species { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+             gap: 1px; background: var(--line); border: 1px solid var(--line);
+             border-radius: 12px; overflow: hidden; }
+  .species div { background: var(--bg); padding: 12px 15px; }
+  .species .name { font-weight: 600; font-size: 14.5px; }
+  .species .latin { font-style: italic; color: var(--dim); font-size: 13px; }
+
+  figure { margin: 0; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { color: var(--dim); font-size: 13.5px; margin-top: 12px; }
+
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em;
+       color: var(--dim); font-weight: 700; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.rule td { font-weight: 650; color: var(--accent); }
+
+  .callout { border: 1px solid var(--line); border-left: 3px solid var(--accent);
+             background: var(--panel); border-radius: 12px; padding: 16px 18px; }
+  .callout strong { display: block; margin-bottom: 4px; }
+
+  ul { margin: 0 0 14px; padding-left: 20px; }
+  li { margin-bottom: 7px; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+           gap: 14px; margin-bottom: 44px; }
+  .stat { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+          background: var(--panel); }
+  .stat .big { font-size: 26px; font-weight: 650; line-height: 1.1; letter-spacing: -.02em; }
+  .stat .cap { font-size: 12.5px; color: var(--dim); margin-top: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <img class="logo" src="/assets/shark_trust.png" alt="Shark Trust" onerror="this.remove()">
+  <div class="brand">
+    <span class="org">Shark Trust</span>
+    <h1>Egg Case Identifier</h1>
+  </div>
+  <div class="grow"></div>
+  <a class="hbtn" href="/">← Back to the identifier</a>
+</header>
+
+<main>
+  <p class="lede">
+    This tool names the species that laid an egg case from a single photograph,
+    and tells you how sure it is.
+  </p>
+  <p class="lede-sub">
+    It was built to support the
+    <a href="https://www.sharktrust.org/greateggcasehunt" target="_blank" rel="noopener">Great
+    Egg Case Hunt</a>, where identification currently depends on the recorder's own eye and
+    the printed guide. This page explains what it covers, how it reaches an answer, and
+    when its answer should be trusted.
+  </p>
+
+  <div class="stats">
+    <div class="stat"><div class="big">9</div><div class="cap">species covered</div></div>
+    <div class="stat"><div class="big">13,054</div><div class="cap">photographs learned from</div></div>
+    <div class="stat"><div class="big">85%</div><div class="cap">confidence to accept a call</div></div>
+    <div class="stat"><div class="big">101 / 101</div><div class="cap">genus identified correctly on the held-out test</div></div>
+  </div>
+
+  <section>
+    <h2>What it covers</h2>
+    <p>
+      The model recognises nine species. These are the egg cases most often recorded on British
+      and Irish beaches, but they are not the complete list — the Great Egg Case Hunt records
+      others besides.
+    </p>
+    <div class="species">
+      <div><div class="name">Blonde Ray</div><div class="latin">Raja brachyura</div></div>
+      <div><div class="name">Thornback Ray</div><div class="latin">Raja clavata</div></div>
+      <div><div class="name">Small-eyed Ray</div><div class="latin">Raja microocellata</div></div>
+      <div><div class="name">Spotted Ray</div><div class="latin">Raja montagui</div></div>
+      <div><div class="name">Undulate Ray</div><div class="latin">Raja undulata</div></div>
+      <div><div class="name">Cuckoo Ray</div><div class="latin">Leucoraja naevus</div></div>
+      <div><div class="name">Small-spotted Catshark</div><div class="latin">Scyliorhinus canicula</div></div>
+      <div><div class="name">Nursehound</div><div class="latin">Scyliorhinus stellaris</div></div>
+      <div><div class="name">Flapper Skate</div><div class="latin">Dipturus intermedius</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How it reaches an answer</h2>
+    <figure>
+      <svg viewBox="0 0 1000 190" role="img" aria-label="Photograph, padded to square, examined by the vision model, compared with nine species, confidence for each">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1 L 9 5 L 0 9 z" fill="var(--dim)"/>
+          </marker>
+        </defs>
+        <g font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, sans-serif">
+          <!-- 1 -->
+          <rect x="0" y="34" width="168" height="104" rx="12" fill="var(--panel)" stroke="var(--line)"/>
+          <text x="84" y="76" text-anchor="middle" font-size="15" font-weight="600" fill="var(--fg)">Photograph</text>
+          <text x="84" y="98" text-anchor="middle" font-size="12" fill="var(--dim)">Taken on any</text>
+          <text x="84" y="114" text-anchor="middle" font-size="12" fill="var(--dim)">phone, on a beach</text>
+
+          <!-- 2 -->
+          <rect x="208" y="34" width="168" height="104" rx="12" fill="var(--panel)" stroke="var(--line)"/>
+          <text x="292" y="70" text-anchor="middle" font-size="15" font-weight="600" fill="var(--fg)">Squared off</text>
+          <text x="292" y="92" text-anchor="middle" font-size="12" fill="var(--dim)">Padded, never</text>
+          <text x="292" y="108" text-anchor="middle" font-size="12" fill="var(--dim)">cropped, so shape</text>
+          <text x="292" y="124" text-anchor="middle" font-size="12" fill="var(--dim)">is preserved</text>
+
+          <!-- 3 -->
+          <rect x="416" y="34" width="168" height="104" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+          <text x="500" y="70" text-anchor="middle" font-size="15" font-weight="600" fill="var(--fg)">Vision model</text>
+          <text x="500" y="92" text-anchor="middle" font-size="12" fill="var(--dim)">Reads shape, horns,</text>
+          <text x="500" y="108" text-anchor="middle" font-size="12" fill="var(--dim)">keel and texture</text>
+          <text x="500" y="124" text-anchor="middle" font-size="12" fill="var(--dim)">as features</text>
+
+          <!-- 4 -->
+          <rect x="624" y="34" width="168" height="104" rx="12" fill="var(--panel)" stroke="var(--line)"/>
+          <text x="708" y="76" text-anchor="middle" font-size="15" font-weight="600" fill="var(--fg)">Weighed against</text>
+          <text x="708" y="98" text-anchor="middle" font-size="12" fill="var(--dim)">all nine species</text>
+          <text x="708" y="114" text-anchor="middle" font-size="12" fill="var(--dim)">at once</text>
+
+          <!-- 5 -->
+          <rect x="832" y="34" width="168" height="104" rx="12" fill="var(--panel)" stroke="var(--line)"/>
+          <text x="916" y="76" text-anchor="middle" font-size="15" font-weight="600" fill="var(--fg)">A confidence</text>
+          <text x="916" y="98" text-anchor="middle" font-size="12" fill="var(--dim)">for every species,</text>
+          <text x="916" y="114" text-anchor="middle" font-size="12" fill="var(--dim)">adding up to 100%</text>
+
+          <g stroke="var(--dim)" stroke-width="1.5" marker-end="url(#arrow)">
+            <line x1="172" y1="86" x2="202" y2="86"/>
+            <line x1="380" y1="86" x2="410" y2="86"/>
+            <line x1="588" y1="86" x2="618" y2="86"/>
+            <line x1="796" y1="86" x2="826" y2="86"/>
+          </g>
+        </g>
+      </svg>
+      <figcaption>
+        Each photograph is examined four times — at two sizes, each also mirrored — and the
+        four readings are averaged. This makes the result steadier than a single look, at the
+        cost of a little time.
+      </figcaption>
+    </figure>
+
+    <h3>What it learned from</h3>
+    <p>
+      13,054 photographs of egg cases, wet and dry, whole and broken. The model was not told
+      what a keel or a horn is; it was shown many examples of each species and worked out for
+      itself which differences matter. The nine species are unevenly represented, from 462
+      Cuckoo Ray photographs to 1,911 Blonde Ray, and the training corrects for that imbalance
+      so the rarer species are not simply ignored.
+    </p>
+  </section>
+
+  <section>
+    <h2>Reading the result</h2>
+    <p>
+      Every answer comes with a confidence: the model's own estimate of how likely its
+      first choice is to be right. The confidences across all nine species always add up
+      to 100%, so a high number for one species necessarily means low numbers elsewhere.
+    </p>
+
+    <div class="callout">
+      <strong>Accept a call at 85% or above.</strong>
+      Below that, treat it as a shortlist, not an identification.
+    </div>
+
+    <h3>Why 85%</h3>
+    <p class="tight">
+      Measured on 101 photographs the model had never seen during training:
+    </p>
+    <table>
+      <thead>
+        <tr><th>Confidence in the top species</th><th class="num">Share of photographs</th><th class="num">Correct</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>90% and above</td><td class="num">40%</td><td class="num">100%</td></tr>
+        <tr class="rule"><td>88% and above</td><td class="num">60%</td><td class="num">97%</td></tr>
+        <tr><td>81% and above</td><td class="num">80%</td><td class="num">91%</td></tr>
+        <tr><td>Every photograph, whatever the confidence</td><td class="num">100%</td><td class="num">84%</td></tr>
+      </tbody>
+    </table>
+    <p>
+      Confidence is doing real work here: the more certain the model says it is, the more often
+      it is right. A threshold of 85% falls between the middle two rows — it keeps most
+      photographs, and within them the model is correct well over nine times in ten.
+    </p>
+    <p>
+      The errors are also of a mild kind. Across those 101 photographs the model identified the
+      <em>genus</em> correctly every time: every mistake was one <em>Raja</em> taken for another,
+      never a catshark taken for a skate.
+    </p>
+
+    <h3>When it is unsure</h3>
+    <ul>
+      <li>
+        <strong>An egg case outside the nine species.</strong> The model has no way to answer
+        "none of these", so it will still name one of the nine. Expect the confidence to fall
+        well below 85% and the remaining probability to spread across several species. A low,
+        flat spread is the signal to distrust the answer.
+      </li>
+      <li>
+        <strong>More than one egg case in the frame.</strong> The model answers for the
+        photograph as a whole, not for each case in it. Several cases together — particularly
+        of different species — pull the confidence apart between them. Photograph one case at
+        a time.
+      </li>
+      <li>
+        <strong>An unclear photograph.</strong> Badly worn, broken, half-buried or very distant
+        cases produce the same flattened spread.
+      </li>
+      <li>
+        <strong>Two similar candidates.</strong> Where the model is torn between close
+        relatives you will see two species sharing most of the confidence. That is genuinely
+        useful — it narrows the decision to a pair you can then separate by eye.
+      </li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Honest limits</h2>
+    <ul>
+      <li>
+        The accuracy figures come from 101 held-out photographs. That is a small sample, and
+        the percentages should be read as indicative rather than precise.
+      </li>
+      <li>
+        Those photographs were supplied separately and were never used in training, so the
+        figures are a genuine test rather than a rehearsal. They are not, however, public
+        submissions. Performance on photographs taken by the public, in conditions we have not
+        seen, may be lower — establishing that is what this round of testing is for.
+      </li>
+      <li>
+        The model sees only the photograph. It does not know where or when the case was found,
+        and location alone would rule out some species immediately.
+      </li>
+      <li>
+        It cannot say "this is not an egg case". Photograph anything else and it will still
+        return nine numbers.
+      </li>
+    </ul>
+  </section>
+</main>
+
+<script>
+  if (localStorage.getItem('eggic-theme') === 'dark') document.documentElement.dataset.theme = 'dark';
+</script>
+</body>
+</html>
