@@ -45,7 +45,7 @@ weights that produced it. Prints the two endpoint URLs.
 | Variable | Value |
 |---|---|
 | `MODAL_PREDICT_URL` | the predict URL from `modal deploy` |
-| `MODAL_FEEDBACK_URL` | the feedback URL from `modal deploy` |
+| `MODAL_FEEDBACK_URL` | the feedback URL from `modal deploy` — note this is `--eggic-feedback`, *not* `--eggic-model-feedback` |
 | `EGGIC_API_KEY` | must match the `eggic-api-key` Modal secret |
 
 No build step: `public/` is static, `api/` are Node functions.
@@ -138,6 +138,13 @@ modal volume get eggic-submissions 2026-08 ./inbox
 
 Analysis is a loop over the sidecars — filter to `feedback.correct == false` for the
 retraining queue. Add a database when that stops being enough, not before.
+
+### Why feedback is a separate function
+
+`feedback` is a plain CPU function, not a method on `Model`. As a method it inherited
+`@modal.enter()`, so recording a one-word answer woke a T4 and loaded 1.2 GB of
+weights first — tens of seconds, and billed as GPU time. It now runs in a small
+container that mounts the submissions volume and nothing else.
 
 ## Security
 

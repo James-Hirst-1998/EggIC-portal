@@ -161,29 +161,46 @@ class Model:
                         if req.get("store") else None)
         return result
 
-    @modal.fastapi_endpoint(method="POST", docs=False)
-    def feedback(self, req: dict):
-        """Record whether the call was right, and what the species actually was."""
-        from fastapi import HTTPException
 
-        self._check_key(req)
+# Feedback edits a small JSON file and needs nothing else — no model, no GPU.
+# Kept off the Model class deliberately: as a method it inherited @modal.enter(),
+# so saving a one-line answer paid a GPU cold start and 1.2 GB of weight loading.
+feedback_image = (
+    modal.Image.debian_slim(python_version="3.11")
+    .pip_install("fastapi[standard]==0.115.12")
+)
 
-        sid = str(req.get("id") or "")
-        if not sid:
-            raise HTTPException(status_code=400, detail="no submission id")
 
-        # Another container wrote this file, so the local view must be refreshed.
-        submissions.reload()
-        matches = list(Path("/submissions").glob(f"*/{sid}.json"))
-        if not matches:
-            raise HTTPException(status_code=404, detail=f"no submission {sid}")
+@app.function(
+    image=feedback_image,
+    volumes={"/submissions": submissions},
+    secrets=[api_key],
+    timeout=30,
+)
+@modal.fastapi_endpoint(method="POST", docs=False)
+def feedback(req: dict):
+    """Record whether the call was right, and what the species actually was."""
+    from fastapi import HTTPException
 
-        sidecar = json.loads(matches[0].read_text())
-        sidecar["feedback"] = {
-            "correct": req.get("correct"),
-            "user_species": req.get("user_species"),
-            "ts": datetime.now(timezone.utc).isoformat(),
-        }
-        matches[0].write_text(json.dumps(sidecar, indent=2))
-        submissions.commit()
-        return {"stored": True, "id": sid}
+    if req.get("key") != os.environ["EGGIC_API_KEY"]:
+        raise HTTPException(status_code=401, detail="bad key")
+
+    sid = str(req.get("id") or "")
+    if not sid:
+        raise HTTPException(status_code=400, detail="no submission id")
+
+    # Another container wrote this file, so the local view must be refreshed.
+    submissions.reload()
+    matches = list(Path("/submissions").glob(f"*/{sid}.json"))
+    if not matches:
+        raise HTTPException(status_code=404, detail=f"no submission {sid}")
+
+    sidecar = json.loads(matches[0].read_text())
+    sidecar["feedback"] = {
+        "correct": req.get("correct"),
+        "user_species": req.get("user_species"),
+        "ts": datetime.now(timezone.utc).isoformat(),
+    }
+    matches[0].write_text(json.dumps(sidecar, indent=2))
+    submissions.commit()
+    return {"stored": True, "id": sid}

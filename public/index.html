@@ -180,6 +180,8 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .centered { display: grid; place-items: center; height: 100%; text-align: center;
               color: var(--dim); font-size: 13.5px; gap: 12px; }
+  .wake-note { max-width: 30ch; font-size: 12.5px; line-height: 1.5; color: var(--dim);
+               border-top: 1px solid var(--line); padding-top: 12px; }
 
   @media (max-width: 880px) {
     body { overflow: auto; }
@@ -265,6 +267,7 @@ const SPECIES = [
 const drop = $('drop'), fileInput = $('file'), intro = $('intro'), review = $('review');
 let items = [];      // {name, file, dataUrl, state, result, error, feedback:{correct,label}, stored}
 let current = 0;
+let firstDone = false;   // once one result is back, the model is awake
 
 /* ---------- theme ---------- */
 if (localStorage.getItem('eggic-theme') === 'dark') document.documentElement.dataset.theme = 'dark';
@@ -374,7 +377,7 @@ async function runBatch() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || res.statusText);
-      item.result = data; item.state = 'done';
+      item.result = data; item.state = 'done'; firstDone = true;
     } catch (err) {
       item.error = err.message; item.state = 'error';
     }
@@ -451,8 +454,14 @@ function renderPanel() {
     return;
   }
   if (item.state !== 'done') {
+    // The model sleeps when unused, so the first call of a session waits on it
+    // waking. Saying so up front stops it reading as a hang.
+    const wakeNote = (!firstDone && item.state === 'running')
+      ? `<div class="wake-note">The first photograph can take up to 30 seconds
+           while the model wakes up. The rest are near-instant.</div>`
+      : '';
     panel.innerHTML = `<div class="centered"><div class="spinner"></div>
-      <div>${item.state === 'running' ? 'Identifying…' : 'Queued'}</div></div>`;
+      <div>${item.state === 'running' ? 'Identifying…' : 'Queued'}</div>${wakeNote}</div>`;
     return;
   }
 
