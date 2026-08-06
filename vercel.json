@@ -7,6 +7,12 @@
   },
   "rewrites": [
     { "source": "/ingest/static/:path*", "destination": "https://eu-assets.i.posthog.com/static/:path*" },
+    { "source": "/ingest/i/v0/e/", "destination": "https://eu.i.posthog.com/i/v0/e/" },
+    { "source": "/ingest/e/", "destination": "https://eu.i.posthog.com/e/" },
+    { "source": "/ingest/batch/", "destination": "https://eu.i.posthog.com/batch/" },
+    { "source": "/ingest/flags/", "destination": "https://eu.i.posthog.com/flags/" },
+    { "source": "/ingest/decide/", "destination": "https://eu.i.posthog.com/decide/" },
+    { "source": "/ingest/s/", "destination": "https://eu.i.posthog.com/s/" },
     { "source": "/ingest/:path*", "destination": "https://eu.i.posthog.com/:path*" }
   ],
   "headers": [
