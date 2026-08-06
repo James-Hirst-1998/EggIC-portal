@@ -4,7 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Shark Trust — Egg Case Identifier</title>
+<meta name="description" content="Identify which of nine UK shark, skate and ray species laid an egg case, from a single photograph. Every answer comes with a confidence.">
+<meta name="theme-color" content="#08807f">
 <link rel="icon" href="/assets/shark_trust.png">
+<link rel="apple-touch-icon" href="/assets/shark_trust.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Shark Trust">
+<meta property="og:title" content="Egg Case Identifier">
+<meta property="og:description" content="Identify which of nine UK shark, skate and ray species laid an egg case, from a single photograph.">
+<meta property="og:image" content="/assets/shark_trust.png">
+<meta name="twitter:card" content="summary">
+<script src="/analytics.js"></script>
 <style>
   /* Light is the default; the toggle stamps data-theme="dark" on <html>. */
   :root {
@@ -67,6 +77,7 @@
   #drop:hover, #drop.over { border-color: var(--accent); background: var(--accent-soft); }
   #drop strong { display: block; font-size: 17px; font-weight: 600; margin-bottom: 5px; }
   #drop span { display: block; font-size: 13px; color: var(--dim); }
+  #drop .formats { font-size: 12px; margin-top: 7px; opacity: .8; }
   .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }
   .fact { border: 1px solid var(--line); border-radius: 11px; padding: 11px 12px;
           background: var(--bg); }
@@ -219,8 +230,12 @@
       <label id="drop" for="file">
         <strong>Drop egg case photos here</strong>
         <span>or click to choose — up to 10 at a time</span>
+        <span class="formats">JPEG, PNG, HEIC and WebP. Photographs only, not video.</span>
       </label>
-      <input type="file" id="file" accept="image/*" multiple>
+      <!-- iPhone photos are .heic, and neither Windows nor Android reliably map that
+           extension to an image/* type, so both must be named explicitly. -->
+      <input type="file" id="file" multiple
+             accept="image/*,.heic,.heif,.HEIC,.HEIF,.jpg,.jpeg,.png,.webp">
 
       <div class="facts">
         <div class="fact"><div class="big">9</div><div class="cap">species covered</div></div>
@@ -251,8 +266,13 @@
 </main>
 
 <script>
+// analytics.js defines the real one. A tracker blocker can stop it loading, and
+// that must not take the identifier down with it.
+window.track = window.track || function () {};
+
 const $ = id => document.getElementById(id);
 const MAX_BATCH = 10;
+const MAX_BYTES = 30 * 1024 * 1024;   // a 30MB photograph is a mistake, not a submission
 
 // Alphabetical and fixed, so the correction list does not reshuffle per photo.
 const SPECIES = [
@@ -279,9 +299,14 @@ $('theme').addEventListener('click', () => {
   if (dark) delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = 'dark';
   localStorage.setItem('eggic-theme', dark ? 'light' : 'dark');
+  track('theme_toggled', {to: dark ? 'light' : 'dark'});
 });
 
 $('restart').addEventListener('click', () => {
+  track('new_batch_clicked', {
+    reviewed: items.filter(i => i.feedback.correct !== null).length,
+    of: items.length,
+  });
   items = []; current = 0;
   fileInput.value = '';
   review.classList.remove('show');
@@ -291,6 +316,18 @@ $('restart').addEventListener('click', () => {
   $('restart').style.display = 'none';
 });
 
+/* ---------- what counts as a photograph ----------
+   Sorting on file.type alone is not safe: Windows and several Android builds hand
+   over HEIC with an empty type, and Finder gives .mov a type only sometimes. Each
+   test therefore takes the MIME type or the extension, whichever is available. */
+const HEIC_EXT  = /\.(heic|heif)$/i;
+const IMAGE_EXT = /\.(jpe?g|png|webp|gif|bmp|avif|tiff?|heic|heif)$/i;
+const VIDEO_EXT = /\.(mov|mp4|m4v|avi|mkv|webm|3gp|3g2|mpe?g|wmv|flv|hevc)$/i;
+
+const isHeic  = f => HEIC_EXT.test(f.name) || /^image\/hei[cf]/.test(f.type);
+const isVideo = f => f.type.startsWith('video/') || VIDEO_EXT.test(f.name);
+const isImage = f => !isVideo(f) && (f.type.startsWith('image/') || IMAGE_EXT.test(f.name));
+
 /* ---------- input ---------- */
 drop.addEventListener('dragenter', e => { e.preventDefault(); drop.classList.add('over'); });
 drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
@@ -299,11 +336,13 @@ drop.addEventListener('dragleave', e => {
 });
 drop.addEventListener('drop', e => {
   e.preventDefault(); drop.classList.remove('over');
-  accept([...e.dataTransfer.files].filter(f => f.type.startsWith('image/')));
+  // Everything dropped is passed on, so anything unusable can be named rather
+  // than silently disappearing.
+  accept([...e.dataTransfer.files], 'drop');
 });
 // Without this the browser navigates away to any photo dropped outside the target.
 ['dragover', 'drop'].forEach(evt => window.addEventListener(evt, e => e.preventDefault()));
-fileInput.addEventListener('change', () => accept([...fileInput.files]));
+fileInput.addEventListener('change', () => accept([...fileInput.files], 'picker'));
 
 document.addEventListener('keydown', e => {
   if (!review.classList.contains('show') || e.target.tagName === 'SELECT') return;
@@ -313,26 +352,65 @@ document.addEventListener('keydown', e => {
   else if (e.key.toLowerCase() === 'n') mark(false);
 });
 
-function accept(files) {
-  $('error').style.display = 'none';
+const names = list => list.map(f => f.name).join(', ');
+
+function accept(files, source) {
+  const err = $('error');
+  err.style.display = 'none';
   if (!files.length) return;
+
+  const videos  = files.filter(isVideo);
+  const photos  = files.filter(isImage);
+  const oddball = files.filter(f => !isVideo(f) && !isImage(f));
+  const huge    = photos.filter(f => f.size > MAX_BYTES);
+  const usable  = photos.filter(f => f.size <= MAX_BYTES);
+
+  track('files_selected', {
+    source, chosen: files.length, usable: usable.length,
+    videos: videos.length, oversize: huge.length, unsupported: oddball.length,
+    heic: usable.filter(isHeic).length,
+    largest_mb: +(Math.max(0, ...files.map(f => f.size)) / 1048576).toFixed(1),
+  });
+
+  // Anything that cannot be identified is named, so a dropped clip or screenshot
+  // does not just vanish with no explanation.
+  const notes = [];
+  if (videos.length) notes.push(
+    `${videos.length === 1 ? 'A video was' : `${videos.length} videos were`} skipped ` +
+    `(${names(videos)}). The model reads still photographs only — take a screenshot ` +
+    `of the clearest frame and upload that.`);
+  if (oddball.length) notes.push(
+    `Not a photograph, so skipped: ${names(oddball)}.`);
+  if (huge.length) notes.push(
+    `Too large to upload (over ${MAX_BYTES / 1048576}MB): ${names(huge)}.`);
+
+  if (!usable.length) {
+    err.textContent = notes.join(' ') || 'No photographs found in that selection.';
+    err.style.display = 'block';
+    $('banner').classList.remove('show');
+    fileInput.value = '';
+    track('files_rejected', {source, videos: videos.length, unsupported: oddball.length,
+                             oversize: huge.length});
+    return;
+  }
 
   // The file picker has no way to cap selection, so the cap is enforced here and
   // the dropped extras are named rather than silently vanishing.
-  const banner = $('banner');
-  if (files.length > MAX_BATCH) {
-    const extra = files.length - MAX_BATCH;
-    banner.textContent =
-      `${files.length} photos selected — testing the first ${MAX_BATCH}, ` +
-      `${extra} not uploaded (${files.slice(MAX_BATCH).map(f => f.name).join(', ')}). ` +
-      `Ten at a time is a limit of this testing build, not the model.`;
-    banner.classList.add('show');
-  } else {
-    banner.classList.remove('show');
+  if (usable.length > MAX_BATCH) {
+    const extra = usable.slice(MAX_BATCH);
+    notes.unshift(
+      `${usable.length} photos selected — testing the first ${MAX_BATCH}, ` +
+      `${extra.length} not uploaded (${names(extra)}). ` +
+      `Ten at a time is a limit of this testing build, not the model.`);
   }
 
-  items = files.slice(0, MAX_BATCH).map(f => ({
+  const banner = $('banner');
+  banner.textContent = notes.join(' ');
+  banner.classList.toggle('show', notes.length > 0);
+
+  items = usable.slice(0, MAX_BATCH).map(f => ({
     name: f.name, file: f, dataUrl: null, state: 'queued',
+    ready: null, converting: false, prepError: null,
     result: null, error: null, feedback: {correct: null, label: null}, stored: undefined,
   }));
   current = 0;
@@ -345,10 +423,10 @@ function accept(files) {
 
 /* The model sees 448px, so sending a 12MP original only makes the user wait on
    their own upload bandwidth. */
-function prepare(file) {
+function downscale(blob) {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    const url = URL.createObjectURL(file);
+    const url = URL.createObjectURL(blob);
     img.onload = () => {
       const max = 1024, scale = Math.min(1, max / Math.max(img.width, img.height));
       const c = document.createElement('canvas');
@@ -363,16 +441,97 @@ function prepare(file) {
   });
 }
 
+/* Safari and every iOS browser decode HEIC themselves; Chrome, Firefox and Edge
+   do not, so those get a decoder — 3MB, fetched once, and only when a HEIC
+   actually turns up. It decodes in a worker, so the page stays responsive
+   through what is several seconds of work on a 12-megapixel photo. */
+let heicLoader = null;
+function loadHeicDecoder() {
+  if (!heicLoader) {
+    heicLoader = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = '/vendor/heic-to.js';
+      s.onload = () => window.HeicTo
+        ? resolve(window.HeicTo)
+        : reject(new Error('decoder loaded but exported nothing'));
+      s.onerror = () => { heicLoader = null; reject(new Error('decoder script failed to load')); };
+      document.head.appendChild(s);
+    });
+  }
+  return heicLoader;
+}
+
+/* Native decode first, so Safari and every ordinary JPEG take the fast path and
+   never pay for the converter. */
+async function prepare(item) {
+  try {
+    return await downscale(item.file);
+  } catch (err) {
+    if (!isHeic(item.file)) throw err;
+  }
+
+  item.converting = true;
+  updateProgress(); renderStrip();
+  if (items[current] === item) renderPanel();
+
+  const started = performance.now();
+  try {
+    const heicTo = await loadHeicDecoder();
+    const jpeg = await heicTo({blob: item.file, type: 'image/jpeg', quality: 0.92});
+    const dataUrl = await downscale(jpeg);
+    track('heic_converted', {ok: true, ms: Math.round(performance.now() - started),
+                             source_mb: +(item.file.size / 1048576).toFixed(1)});
+    return dataUrl;
+  } catch (err) {
+    track('heic_converted', {ok: false, ms: Math.round(performance.now() - started),
+                             reason: String(err && err.message || err).slice(0, 120)});
+    throw new Error('This iPhone photo (HEIC) could not be converted. On the iPhone, ' +
+                    'Settings › Camera › Formats › "Most Compatible" saves as JPEG instead.');
+  } finally {
+    item.converting = false;
+  }
+}
+
 /* One at a time: the model serves one request at a time anyway, and results appear
-   as they land so review can start on the first photo immediately. */
+   as they land so review can start on the first photo immediately.
+
+   Preparing a photo and identifying it run as two separate serial queues, so a
+   HEIC conversion — several seconds — overlaps the previous photo's round trip
+   instead of following it. Each queue still handles one photo at a time: the
+   decoder has a single worker, and the model a single container. */
 async function runBatch() {
+  const batchStarted = performance.now();
+  let ok = 0, failed = 0;
+  track('batch_started', {size: items.length, heic: items.filter(i => isHeic(i.file)).length});
+  updateProgress();
+
+  let queue = Promise.resolve();
+  for (const item of items) {
+    // Failures are recorded rather than thrown, so one bad photo does not stall
+    // the queue behind it.
+    item.ready = queue = queue.then(() => prepare(item).then(
+      url => {
+        item.dataUrl = url;
+        renderStrip();
+        if (items[current] === item) showPhoto();
+      },
+      err => { item.prepError = err; },
+    ));
+  }
+
   for (const [i, item] of items.entries()) {
-    item.state = 'running';
-    updateProgress(); renderStrip(); if (i === current) renderPanel();
+    const cold = !firstDone;
+    let started = performance.now();
+    let stage = 'prepare';
     try {
-      item.dataUrl = await prepare(item.file);
-      if (i === current) showPhoto();
-      renderStrip();
+      await item.ready;
+      if (item.prepError) throw item.prepError;
+      item.state = 'running';
+      updateProgress(); renderStrip(); if (i === current) { showPhoto(); renderPanel(); }
+      // Timed from here, so the figure is the model's round trip and not the
+      // seconds a HEIC conversion may have added in front of it.
+      stage = 'predict';
+      started = performance.now();
       const res = await fetch('/api/predict', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -380,20 +539,35 @@ async function runBatch() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || res.statusText);
-      item.result = data; item.state = 'done'; firstDone = true;
+      item.result = data; item.state = 'done'; firstDone = true; ok++;
+      const top = data.ranked[0];
+      track('prediction_succeeded', {
+        species: top.name, confidence: +top.prob.toFixed(3), confident: !!data.confident,
+        runner_up: data.ranked[1] && data.ranked[1].name,
+        ms: Math.round(performance.now() - started),
+        cold_start: cold, position: i + 1, batch_size: items.length,
+        heic: isHeic(item.file),
+      });
     } catch (err) {
-      item.error = err.message; item.state = 'error';
+      item.error = err.message; item.state = 'error'; failed++;
+      track('prediction_failed', {
+        stage, reason: String(err.message).slice(0, 200), cold_start: cold,
+        ms: Math.round(performance.now() - started),
+        position: i + 1, batch_size: items.length, heic: isHeic(item.file),
+      });
     }
     updateProgress(); renderStrip(); if (i === current) renderPanel();
   }
   updateProgress();
+  track('batch_completed', {size: items.length, succeeded: ok, failed,
+                            ms: Math.round(performance.now() - batchStarted)});
 }
 
 function updateProgress() {
-  const running = items.findIndex(i => i.state === 'running');
-  $('progress').textContent = running === -1
+  const busy = items.findIndex(i => i.state !== 'done' && i.state !== 'error');
+  $('progress').textContent = busy === -1
     ? (items.length > 1 ? `${items.length} photos` : '')
-    : `Identifying ${running + 1} of ${items.length}…`;
+    : `Identifying ${busy + 1} of ${items.length}…`;
 }
 
 /* ---------- navigation ---------- */
@@ -420,6 +594,10 @@ function showPhoto() {
   $('strip').style.display = single ? 'none' : 'flex';
 }
 
+// Filenames come from the user's disk and land in an attribute, so they are escaped.
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
 function renderStrip() {
   $('strip').innerHTML = items.map((item, i) => {
     const fb = item.feedback.correct;
@@ -429,7 +607,7 @@ function renderStrip() {
     else if (fb === true) badge = '<div class="badge ok">✓</div>';
     else if (fb === false) badge = '<div class="badge no">✕</div>';
     return `<div class="thumb${i === current ? ' active' : ''}${item.state === 'done' ? '' : ' pending'}"
-                 data-i="${i}" title="${item.name}"
+                 data-i="${i}" title="${esc(item.name)}"
                  style="background-image:url('${item.dataUrl || ''}')">${badge}</div>`;
   }).join('');
   [...$('strip').children].forEach(el =>
@@ -467,8 +645,11 @@ function renderPanel() {
            using it, to keep costs down. Deployed in-house, the wait disappears entirely.</span>
          </div>`
       : '';
+    const label = item.converting          ? 'Converting from your iPhone’s HEIC…'
+                : item.state === 'running' ? 'Identifying…'
+                : 'Queued';
     panel.innerHTML = `<div class="centered"><div class="spinner"></div>
-      <div>${item.state === 'running' ? 'Identifying…' : 'Queued'}</div>${wakeNote}</div>`;
+      <div>${label}</div>${item.converting ? '' : wakeNote}</div>`;
     return;
   }
 
@@ -513,11 +694,22 @@ function renderPanel() {
 
   panel.querySelectorAll('.fb-buttons button').forEach(b =>
     b.addEventListener('click', () => mark(b.dataset.correct === 'yes')));
+  const alts = panel.querySelector('details');
+  if (alts) alts.addEventListener('toggle', () => {
+    if (alts.open) track('alternatives_expanded', {species: top.name,
+                                                   confident: !!d.confident});
+  });
   const sel = $('true-species');
   if (sel) sel.addEventListener('change', () => {
     const it = items[current];
     it.feedback.label = sel.value || null;
     renderStrip();
+    if (sel.value) track('correction_given', {
+      predicted: it.result.ranked[0].name, corrected_to: sel.value,
+      confidence: +it.result.ranked[0].prob.toFixed(3),
+      // The most valuable signal in the whole test: which pairs the model confuses.
+      confusion: `${it.result.top} → ${sel.value}`,
+    });
     sendFeedback(it);
     if (sel.value && current < items.length - 1) setTimeout(() => go(current + 1), 250);
   });
@@ -540,6 +732,11 @@ function mark(correct) {
   // "Correct" is self-describing; "not correct" waits for the species picker.
   item.feedback.label = correct ? item.result.top : null;
   renderStrip(); renderPanel();
+  const top = item.result.ranked[0];
+  track('feedback_given', {
+    correct, predicted: top.name, confidence: +top.prob.toFixed(3),
+    confident: !!item.result.confident,
+  });
   sendFeedback(item);
   if (correct && current < items.length - 1) setTimeout(() => go(current + 1), 250);
 }

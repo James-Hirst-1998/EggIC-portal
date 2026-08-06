@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Nothing to crawl behind these.
+Disallow: /api/
+Disallow: /ingest/
+Disallow: /vendor/

@@ -50,6 +50,22 @@ weights that produced it. Prints the two endpoint URLs.
 
 No build step: `public/` is static, `api/` are Node functions.
 
+Nothing else needs setting. The PostHog project token in `public/analytics.js` is a
+public write key and belongs in the page; `vercel.json` rewrites `/ingest/*` onto
+`eu.i.posthog.com` so the calls are first-party and survive tracker blockers.
+
+## Photo formats
+
+JPEG, PNG, WebP and HEIC. Video is rejected with a message naming the file.
+
+HEIC is what an iPhone shoots by default. Safari and every iOS browser decode it
+natively and take the same path as a JPEG. Chrome, Firefox and Edge cannot, so on
+those `public/vendor/heic-to.js` (libheif compiled to WebAssembly, 3MB, vendored so
+there is no CDN in the critical path) is fetched the first time a HEIC appears and
+decodes it in a worker. Budget several seconds per 12-megapixel photo on that path —
+conversion is therefore run one photo ahead of identification, so it overlaps the
+previous photo's round trip rather than following it.
+
 ## Running locally
 
 ```bash

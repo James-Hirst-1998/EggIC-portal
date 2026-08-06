@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Not found — Shark Trust Egg Case Identifier</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#08807f">
+<link rel="icon" href="/assets/shark_trust.png">
+<script src="/analytics.js"></script>
+<style>
+  :root {
+    --bg:#ffffff; --fg:#101d1c; --dim:#5c6b69; --line:#e2e7e6;
+    --accent:#08807f; --plate:#ffffff;
+  }
+  :root[data-theme="dark"] {
+    --bg:#0d1312; --fg:#e7ecea; --dim:#94a3a1; --line:#242f2d;
+    --accent:#54bcb9; --plate:#ffffff;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.6 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column; -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  header {
+    flex: none; display: flex; align-items: center; gap: 13px;
+    padding: 10px 22px; border-bottom: 1px solid var(--line);
+  }
+  header .logo { height: 44px; width: auto; background: var(--plate);
+                 border-radius: 5px; padding: 3px; flex: none; }
+  .brand { display: flex; flex-direction: column; line-height: 1.25; }
+  .brand .org { font-size: 11px; font-weight: 700; letter-spacing: .13em;
+                text-transform: uppercase; color: var(--accent); }
+  .brand h1 { font-size: 16px; font-weight: 600; margin: 0; }
+  main { flex: 1; display: grid; place-items: center; padding: 24px; text-align: center; }
+  .code { font-size: 13px; letter-spacing: .1em; text-transform: uppercase;
+          color: var(--dim); font-weight: 700; }
+  .lede { font-size: 21px; font-weight: 500; letter-spacing: -.012em; margin: 8px 0 6px; }
+  .sub { color: var(--dim); margin: 0 0 22px; }
+</style>
+</head>
+<body>
+
+<header>
+  <img class="logo" src="/assets/shark_trust.png" alt="Shark Trust" onerror="this.remove()">
+  <div class="brand">
+    <span class="org">Shark Trust</span>
+    <h1>Egg Case Identifier</h1>
+  </div>
+</header>
+
+<main>
+  <div>
+    <div class="code">404</div>
+    <p class="lede">There is no page here.</p>
+    <p class="sub">The link may be out of date, or mistyped.</p>
+    <p><a href="/">Go to the identifier</a> &nbsp;·&nbsp; <a href="/about">How it works</a></p>
+  </div>
+</main>
+
+<script>
+  if (localStorage.getItem('eggic-theme') === 'dark') document.documentElement.dataset.theme = 'dark';
+</script>
+</body>
+</html>
