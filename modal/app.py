@@ -34,7 +34,7 @@ HERE = Path(__file__).resolve().parent
 # picks which to run. Two ViT-L at fp16 fit a T4 with room to spare.
 MODEL_VERSIONS = [v.strip() for v in
                   os.environ.get("MODEL_VERSIONS", "v1,dinov3").split(",") if v.strip()]
-CONFIDENT_AT = 0.85  # above this we name a species; below, the UI shows the field
+CONFIDENT_AT = 0.90  # on the display scale this is the measured no-observed-error line
 
 app = modal.App("eggic")
 
@@ -112,6 +112,11 @@ class Model:
             print(f"loaded {version} in {time.time() - t0:.1f}s "
                   f"({clf.image_size}px, T={clf.temperature}, {len(clf.views)} TTA views)")
         self.version = self.versions[0]
+        # The average is built from raw probabilities, so its display scale is its
+        # own — it lives on the volume beside the arms.
+        ens = Path("/models/ensemble/calibration_T1.json")
+        self.ensemble_display_t = (json.loads(ens.read_text())["display_temperature"]
+                                   if ens.is_file() else 1.0)
 
     @staticmethod
     def _check_key(req: dict) -> None:
@@ -171,6 +176,8 @@ class Model:
             raise HTTPException(status_code=400,
                                 detail=f"could not decode image: {type(exc).__name__}: {exc}")
 
+        from inference import apply_display_temperature
+
         wanted = req.get("models") or [self.version]
         unknown = [m for m in wanted if m not in self.clfs]
         if unknown:
@@ -192,6 +199,14 @@ class Model:
             if not all(math.isfinite(x["prob"]) for x in r["ranked"]):
                 raise HTTPException(status_code=500,
                                     detail=f"{name} returned non-finite probabilities")
+
+        # Display scale last: averaging must happen on the raw probabilities.
+        for name, r in by_model.items():
+            t = (self.ensemble_display_t if name == "ensemble"
+                 else self.clfs[name].display_temperature)
+            r["ranked"] = apply_display_temperature(r["ranked"], t)
+            r["confidence"] = r["ranked"][0]["prob"]
+            r["display_temperature"] = t
 
         result = dict(by_model[primary])
         result["latency_ms"] = round((time.time() - t0) * 1000)

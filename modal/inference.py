@@ -60,6 +60,23 @@ def load_rgb(path_or_bytes) -> np.ndarray:
     return np.array(Image.open(path_or_bytes).convert("RGB"))
 
 
+def apply_display_temperature(ranked: List[dict], temperature: float) -> List[dict]:
+    """Stretch the shown confidence without touching the ranking.
+
+    Label smoothing caps the raw softmax near 0.911, so a reader never sees a high
+    number and cannot tell a strong call from a weak one. Sharpening is monotone in
+    the top class, so the answer and the order are unchanged — only the label moves.
+    """
+    if temperature == 1.0:
+        return ranked
+    probs = np.array([r["prob"] for r in ranked], dtype=np.float64)
+    z = np.log(np.clip(probs, 1e-9, 1)) / temperature
+    z -= z.max()
+    q = np.exp(z)
+    q /= q.sum()
+    return [{**r, "prob": float(v)} for r, v in zip(ranked, q)]
+
+
 class Classifier:
     def __init__(self, run_dir: Path, device: str = "cuda", dtype: torch.dtype | None = None):
         run_dir = Path(run_dir)
@@ -92,12 +109,12 @@ class Classifier:
         self.model.to(self.device)
 
         self.val_macro_f1 = float(ckpt.get("val_macro_f1", float("nan")))
-        self.temperature, self.bands = self._load_calibration(run_dir)
+        self.temperature, self.bands, self.display_temperature = self._load_calibration(run_dir)
         self.views = [_tta_transform(self.image_size, s, flip)
                        for s in self.tta_scales for flip in (False, True)]
 
     @staticmethod
-    def _load_calibration(run_dir: Path) -> Tuple[float, List[dict]]:
+    def _load_calibration(run_dir: Path) -> Tuple[float, List[dict], float]:
         """Temperature + coverage/accuracy bands. Prefers calibration_T1.json —
         the T=0.381 in benchmark_metrics.json was fitted on a leaky by-image split
         and inflated mean confidence to 98.2% against 84.2% real accuracy."""
@@ -107,7 +124,8 @@ class Classifier:
                 bm = json.loads(path.read_text())
                 bands = sorted(bm.get("coverage_accuracy", []),
                                key=lambda c: c["confidence_threshold"], reverse=True)
-                return float(bm.get("temperature", 1.0)), bands
+                return (float(bm.get("temperature", 1.0)), bands,
+                        float(bm.get("display_temperature", 1.0)))
         raise FileNotFoundError(f"No calibration file in {run_dir}.")
 
     def _reliability(self, conf: float) -> str:
