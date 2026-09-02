@@ -72,7 +72,9 @@ class Classifier:
 
         self.run_dir = run_dir
         self.device = torch.device(device)
-        self.dtype = dtype or (torch.float16 if self.device.type == "cuda" else torch.float32)
+        # float32, not float16: DINOv3 ViT-L overflows in pure half precision and
+        # returns NaN logits. DINOv2 tolerated fp16, which is why this was missed.
+        self.dtype = dtype or torch.float32
 
         ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
         self.classes: List[str] = ckpt["classes"]

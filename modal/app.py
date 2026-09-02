@@ -20,6 +20,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import math
 import os
 import time
 import uuid
@@ -89,7 +90,7 @@ api_key = modal.Secret.from_name("eggic-api-key")
 
 @app.cls(
     image=image,
-    gpu="T4",
+    gpu="L4",   # fp32 ViT-L x2; the T4 was only viable at fp16, which DINOv3 cannot use
     volumes={"/models": models, "/submissions": submissions},
     secrets=[api_key],
     # Idle GPU time is the main cost here, not the inference. 60s covers the gaps
@@ -186,6 +187,11 @@ class Model:
         primary = req.get("primary") or ("ensemble" if len(by_model) > 1 else wanted[0])
         if primary not in by_model:
             raise HTTPException(status_code=400, detail=f"primary {primary!r} was not run")
+
+        for name, r in by_model.items():
+            if not all(math.isfinite(x["prob"]) for x in r["ranked"]):
+                raise HTTPException(status_code=500,
+                                    detail=f"{name} returned non-finite probabilities")
 
         result = dict(by_model[primary])
         result["latency_ms"] = round((time.time() - t0) * 1000)
