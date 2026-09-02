@@ -228,43 +228,47 @@
     </p>
 
     <div class="callout">
-      <strong>Accept a call at 85% or above.</strong>
+      <strong>Accept a call at 87.5% or above.</strong>
       Below that, treat it as a shortlist, not an identification.
     </div>
 
-    <h3>Why 85%</h3>
+    <h3>Why 87.5%</h3>
     <p class="tight">
-      Measured on 101 photographs the model had never seen during training:
+      Measured on 224 photographs the model had never seen during training — 101 reference
+      photographs and 123 sent in from beaches:
     </p>
     <table>
       <thead>
         <tr><th>Confidence in the top species</th><th class="num">Share of photographs</th><th class="num">Correct</th></tr>
       </thead>
       <tbody>
-        <tr><td>90% and above</td><td class="num">40%</td><td class="num">100%</td></tr>
-        <tr class="rule"><td>88% and above</td><td class="num">60%</td><td class="num">97%</td></tr>
-        <tr><td>81% and above</td><td class="num">80%</td><td class="num">91%</td></tr>
-        <tr><td>Every photograph, whatever the confidence</td><td class="num">100%</td><td class="num">84%</td></tr>
+        <tr class="rule"><td>87.5% and above — accepted</td><td class="num">59%</td><td class="num">100%</td></tr>
+        <tr><td>80% and above</td><td class="num">67%</td><td class="num">99%</td></tr>
+        <tr><td>70% and above</td><td class="num">73%</td><td class="num">98%</td></tr>
+        <tr><td>Every photograph, whatever the confidence</td><td class="num">100%</td><td class="num">87%</td></tr>
       </tbody>
     </table>
     <p>
-      Confidence is doing real work here: the more certain the model says it is, the more often
-      it is right. A threshold of 85% falls between the middle two rows — it keeps most
-      photographs, and within them the model is correct well over nine times in ten.
+      Confidence is doing real work here: the more certain the model says it is, the more
+      often it is right. 87.5% sits just clear of the first mistake: the most confident wrong
+      answer in those 224 photographs came in at 83.5%, four points below the line. Everything
+      the tool accepted, it got right — 133 photographs, three in every five.
     </p>
     <p>
-      The errors are also of a mild kind. Across those 101 photographs the model identified the
-      <em>genus</em> correctly every time: every mistake was one <em>Raja</em> taken for another,
-      never a catshark taken for a skate.
+      The mistakes it did make are mostly of a mild kind. Of the 29 wrong answers, 28 were one
+      <em>Raja</em> taken for another, most often a Thornback called a Blonde. Only one crossed
+      genus, and that came in at 50% confidence, nowhere near the line.
     </p>
 
     <h3>When it is unsure</h3>
     <ul>
       <li>
         <strong>An egg case outside the nine species.</strong> The model has no way to answer
-        "none of these", so it will still name one of the nine. Expect the confidence to fall
-        well below 85% and the remaining probability to spread across several species. A low,
-        flat spread is the signal to distrust the answer.
+        "none of these", so it will still name one of the nine. Usually the confidence drops
+        and the remaining probability spreads across several species — but not always. Of 19
+        photographs of untaught species we tested, 5 still cleared 87.5% under the wrong name.
+        This is the tool's weakest point, and the confidence number will not warn you about it.
+        If you have reason to think the case is something else, trust that over the number.
       </li>
       <li>
         <strong>More than one egg case in the frame.</strong> The model answers for the
@@ -274,7 +278,8 @@
       </li>
       <li>
         <strong>An unclear photograph.</strong> Badly worn, broken, half-buried or very distant
-        cases produce the same flattened spread.
+        cases usually push the confidence down and spread it across several species. A low, flat
+        spread is the signal to treat the answer as a shortlist.
       </li>
       <li>
         <strong>Two similar candidates.</strong> Where the model is torn between close
@@ -288,8 +293,13 @@
     <h2>Honest limits</h2>
     <ul>
       <li>
-        The accuracy figures come from 101 held-out photographs. That is a small sample, and
+        The accuracy figures come from 224 held-out photographs. That is a small sample, and
         the percentages should be read as indicative rather than precise.
+      </li>
+      <li>
+        The 87.5% line was chosen using those same 224 photographs, so "none of them wrong" is
+        the best case rather than a promise. On photographs we have not seen, the honest reading
+        is <em>at least 97% right above the line</em>.
       </li>
       <li>
         Those photographs were supplied separately and were never used in training, so the
