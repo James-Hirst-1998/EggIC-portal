@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Server is not configured.' });
   }
 
-  const { image, filename } = req.body || {};
+  const { image, filename, models, primary } = req.body || {};
   if (!image) {
     return res.status(400).json({ error: 'No image supplied.' });
   }
@@ -28,6 +28,8 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         image,
         filename: filename || null,
+        models: models || null,     // null lets Modal pick its default arm
+        primary: primary || null,
         key: EGGIC_API_KEY,
         store: true,   // the deployed site keeps every submission
       }),

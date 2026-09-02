@@ -203,6 +203,13 @@
     .stage { grid-template-rows: auto 52vh auto; }
     .panel { overflow: visible; }
   }
+  .compare { margin:.9rem 0 0; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .compare .crow { display:flex; justify-content:space-between; gap:.5rem;
+    padding:.45rem .6rem; font-size:.86rem; border-top:1px solid var(--line); }
+  .compare .crow:first-child { border-top:0; background:var(--card); font-weight:600; }
+  .compare .cname { color:var(--muted); }
+  .compare .agree { color:var(--ok, #1a7f37); }
+  .compare .differ { color:var(--warn, #b25f00); font-weight:600; }
 </style>
 </head>
 <body>
@@ -240,7 +247,7 @@
       <div class="facts">
         <div class="fact"><div class="big">9</div><div class="cap">species covered</div></div>
         <div class="fact"><div class="big">13,054</div><div class="cap">photographs learned from</div></div>
-        <div class="fact"><div class="big">85%</div><div class="cap">confidence to accept a call</div></div>
+        <div class="fact"><div class="big">87.5%</div><div class="cap">confidence to accept a call</div></div>
       </div>
 
       <p class="more"><a href="/about">How the model works, and when to trust it →</a></p>
@@ -535,7 +542,7 @@ async function runBatch() {
       const res = await fetch('/api/predict', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({image: item.dataUrl, filename: item.name}),
+        body: JSON.stringify({image: item.dataUrl, filename: item.name, ...modelChoice()}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || res.statusText);
@@ -615,6 +622,34 @@ function renderStrip() {
 }
 
 /* ---------- result panel ---------- */
+// Both models always run and their answers are averaged — that pairing is what the
+// held-out evaluation favours. ?compare=1 exposes the individual arms for testing.
+const COMPARE = new URLSearchParams(location.search).has('compare');
+const ARMS = ['v1', 'dinov3'];
+
+function modelChoice() {
+  return {models: ARMS, primary: 'ensemble'};
+}
+
+const MODEL_LABEL = {v1: 'v1 · DINOv2', dinov3: 'DINOv3', ensemble: 'Both, averaged'};
+
+function compareHtml(d) {
+  if (!COMPARE) return '';
+  const by = d.by_model || {};
+  const arms = Object.keys(by).filter(m => m !== 'ensemble');
+  if (arms.length < 2) return '';
+  const calls = arms.map(m => by[m].top);
+  const agree = calls.every(c => c === calls[0]);
+  const rows = ['ensemble', ...arms].filter(m => by[m]).map(m => {
+    const r = by[m];
+    const cls = m === 'ensemble' ? '' : (r.top === by.ensemble.top ? 'agree' : 'differ');
+    return `<div class="crow"><span class="cname">${MODEL_LABEL[m] || m}</span>
+      <span class="${cls}">${r.top_name} · ${(r.confidence * 100).toFixed(0)}%</span></div>`;
+  }).join('');
+  return `<h2>${agree ? 'Both models agree' : 'The models disagree'}</h2>
+    <div class="compare">${rows}</div>`;
+}
+
 function rowHtml(r, isTop) {
   const pct = (r.prob * 100).toFixed(1);
   return `<div class="row${isTop ? ' top' : ''}">
@@ -654,6 +689,7 @@ function renderPanel() {
   }
 
   const d = item.result, top = d.ranked[0], pct = (top.prob * 100).toFixed(0);
+  const compare = compareHtml(d);
   const rest = d.ranked.slice(3);
   const fb = item.feedback;
 
@@ -667,6 +703,8 @@ function renderPanel() {
         : `${pct}% confident — not enough to call it. Compare the alternatives below.`}
       </div>
     </div>
+
+    ${compare}
 
     <h2>Most likely</h2>
     <div>${d.ranked.slice(0, 3).map((r, i) => rowHtml(r, i === 0)).join('')}</div>

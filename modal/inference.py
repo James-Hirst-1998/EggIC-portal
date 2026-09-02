@@ -60,16 +60,38 @@ def load_rgb(path_or_bytes) -> np.ndarray:
     return np.array(Image.open(path_or_bytes).convert("RGB"))
 
 
+def apply_display_temperature(ranked: List[dict], temperature: float) -> List[dict]:
+    """Stretch the shown confidence without touching the ranking.
+
+    Label smoothing caps the raw softmax near 0.911, so a reader never sees a high
+    number and cannot tell a strong call from a weak one. Sharpening is monotone in
+    the top class, so the answer and the order are unchanged — only the label moves.
+    """
+    if temperature == 1.0:
+        return ranked
+    probs = np.array([r["prob"] for r in ranked], dtype=np.float64)
+    z = np.log(np.clip(probs, 1e-9, 1)) / temperature
+    z -= z.max()
+    q = np.exp(z)
+    q /= q.sum()
+    return [{**r, "prob": float(v)} for r, v in zip(ranked, q)]
+
+
 class Classifier:
     def __init__(self, run_dir: Path, device: str = "cuda", dtype: torch.dtype | None = None):
         run_dir = Path(run_dir)
-        ckpt_path = run_dir / "best.pt"
-        if not ckpt_path.is_file():
-            raise FileNotFoundError(f"No checkpoint at {ckpt_path}.")
+        # final_ema wins where a run wrote both: best-on-val selects the most
+        # overfit epoch, because near-duplicates leak across the by-image split.
+        ckpt_path = next((run_dir / n for n in ("final_ema.pt", "best.pt")
+                          if (run_dir / n).is_file()), None)
+        if ckpt_path is None:
+            raise FileNotFoundError(f"No final_ema.pt or best.pt in {run_dir}.")
 
         self.run_dir = run_dir
         self.device = torch.device(device)
-        self.dtype = dtype or (torch.float16 if self.device.type == "cuda" else torch.float32)
+        # float32, not float16: DINOv3 ViT-L overflows in pure half precision and
+        # returns NaN logits. DINOv2 tolerated fp16, which is why this was missed.
+        self.dtype = dtype or torch.float32
 
         ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
         self.classes: List[str] = ckpt["classes"]
@@ -87,12 +109,12 @@ class Classifier:
         self.model.to(self.device)
 
         self.val_macro_f1 = float(ckpt.get("val_macro_f1", float("nan")))
-        self.temperature, self.bands = self._load_calibration(run_dir)
+        self.temperature, self.bands, self.display_temperature = self._load_calibration(run_dir)
         self.views = [_tta_transform(self.image_size, s, flip)
                        for s in self.tta_scales for flip in (False, True)]
 
     @staticmethod
-    def _load_calibration(run_dir: Path) -> Tuple[float, List[dict]]:
+    def _load_calibration(run_dir: Path) -> Tuple[float, List[dict], float]:
         """Temperature + coverage/accuracy bands. Prefers calibration_T1.json —
         the T=0.381 in benchmark_metrics.json was fitted on a leaky by-image split
         and inflated mean confidence to 98.2% against 84.2% real accuracy."""
@@ -102,7 +124,8 @@ class Classifier:
                 bm = json.loads(path.read_text())
                 bands = sorted(bm.get("coverage_accuracy", []),
                                key=lambda c: c["confidence_threshold"], reverse=True)
-                return float(bm.get("temperature", 1.0)), bands
+                return (float(bm.get("temperature", 1.0)), bands,
+                        float(bm.get("display_temperature", 1.0)))
         raise FileNotFoundError(f"No calibration file in {run_dir}.")
 
     def _reliability(self, conf: float) -> str:

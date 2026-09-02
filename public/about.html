@@ -125,8 +125,8 @@
   <div class="stats">
     <div class="stat"><div class="big">9</div><div class="cap">species covered</div></div>
     <div class="stat"><div class="big">13,054</div><div class="cap">photographs learned from</div></div>
-    <div class="stat"><div class="big">85%</div><div class="cap">confidence to accept a call</div></div>
-    <div class="stat"><div class="big">101 / 101</div><div class="cap">genus identified correctly on the held-out test</div></div>
+    <div class="stat"><div class="big">87.5%</div><div class="cap">confidence to accept a call</div></div>
+    <div class="stat"><div class="big">133 / 224</div><div class="cap">held-out photographs answered, none of them wrong</div></div>
   </div>
 
   <section>
@@ -201,9 +201,11 @@
         </g>
       </svg>
       <figcaption>
-        Each photograph is examined four times — at two sizes, each also mirrored — and the
-        four readings are averaged. This makes the result steadier than a single look, at the
-        cost of a little time.
+        Two independent models look at every photograph, and their answers are averaged into
+        the single result you see. They were trained differently and make different mistakes,
+        so where they disagree the combined confidence drops and the tool holds back rather
+        than guessing — which is where its old mistakes used to happen. Each model also
+        examines the photograph four times, at two sizes and mirrored, and averages those.
       </figcaption>
     </figure>
 
