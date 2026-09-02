@@ -14,7 +14,7 @@ carries the same goal statement. Keep the two copies in step.
 2. **Get at least 50% of photos above that line.** Half of real submissions answered
    automatically, every one of them correct, is the golden goal.
 
-**90% means the shown scale**, not raw softmax. Label smoothing caps raw confidence
+**87.5% means the shown scale**, not raw softmax. Label smoothing caps raw confidence
 near 0.911, so the raw number could never express certainty. Every arm is displayed
 through one shared `display_temperature = 0.80` (`softmax(log p / T)`, renormalised):
 it moves tail mass to the leader, leaves the species and its ranking untouched, caps
@@ -33,9 +33,9 @@ v1+DINOv3 averaged: **133 of 224 (59%), none wrong** — both rules met. On the 
 scale DINOv3 alone answers 135 with **5 wrong** and v1 alone answers 177 with **15
 wrong**, so serving the average is a correctness fix, not a preference. Caveats: the
 scale and the line were fitted on this same sample (95% floor ≈97%, not 100%), and 5
-of the 19 untaught-species photos still clear 0.90.
+of the 19 untaught-species photos still clear 0.875.
 
-What that means here: the 0.90 line is the product, not a display detail. The UI
+What that means here: the 0.875 line is the product, not a display detail. The UI
 names a species above it and presents the field below it, and the threshold
 constant lives in `modal/app.py` (`CONFIDENT_AT`). Moving it changes what the
 model promises — measure before touching it.
