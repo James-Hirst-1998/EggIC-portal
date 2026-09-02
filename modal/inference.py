@@ -63,9 +63,12 @@ def load_rgb(path_or_bytes) -> np.ndarray:
 class Classifier:
     def __init__(self, run_dir: Path, device: str = "cuda", dtype: torch.dtype | None = None):
         run_dir = Path(run_dir)
-        ckpt_path = run_dir / "best.pt"
-        if not ckpt_path.is_file():
-            raise FileNotFoundError(f"No checkpoint at {ckpt_path}.")
+        # final_ema wins where a run wrote both: best-on-val selects the most
+        # overfit epoch, because near-duplicates leak across the by-image split.
+        ckpt_path = next((run_dir / n for n in ("final_ema.pt", "best.pt")
+                          if (run_dir / n).is_file()), None)
+        if ckpt_path is None:
+            raise FileNotFoundError(f"No final_ema.pt or best.pt in {run_dir}.")
 
         self.run_dir = run_dir
         self.device = torch.device(device)

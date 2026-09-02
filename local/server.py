@@ -131,6 +131,8 @@ class Handler(BaseHTTPRequestHandler):
         payload = json.dumps({
             "image": req.get("image"),
             "filename": req.get("filename"),
+            "models": req.get("models"),      # null lets Modal pick its default arm
+            "primary": req.get("primary"),
             "key": self.key,
             "store": False,   # local runs never write to the submissions volume
         }).encode()

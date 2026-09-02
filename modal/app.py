@@ -29,37 +29,52 @@ from pathlib import Path
 import modal
 
 HERE = Path(__file__).resolve().parent
-MODEL_VERSION = os.environ.get("MODEL_VERSION", "v1")
+# Comma-separated: every one is loaded into the same container, and a request
+# picks which to run. Two ViT-L at fp16 fit a T4 with room to spare.
+MODEL_VERSIONS = [v.strip() for v in
+                  os.environ.get("MODEL_VERSIONS", "v1,dinov3").split(",") if v.strip()]
 CONFIDENT_AT = 0.85  # above this we name a species; below, the UI shows the field
 
 app = modal.App("eggic")
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
-    # Pinned to the env that produced the checkpoint. timm especially: 0.9.16 is
-    # not interchangeable with 1.0.x here — build.py imports param_groups_layer_decay
-    # from timm.optim.optim_factory, which moved in 1.0.
+    # timm 1.0.28 is required by the DINOv3 backbone, and it moved
+    # param_groups_layer_decay out of timm.optim.optim_factory — so the pin and
+    # the mounted eggic_fgvc source have to travel together (checked below).
     .pip_install(
         "torch==2.7.1",
         "torchvision==0.22.1",
-        "timm==0.9.16",
+        "timm==1.0.28",
         "albumentations==2.0.8",
         "opencv-python-headless==4.11.0.86",
         "numpy==1.26.4",
         "pillow==10.4.0",
         "fastapi[standard]==0.115.12",
     )
-    .env({"PYTHONPATH": "/root:/root/fgvc_src", "MODEL_VERSION": MODEL_VERSION})
+    .env({"PYTHONPATH": "/root:/root/fgvc_src",
+          "MODEL_VERSIONS": ",".join(MODEL_VERSIONS)})
 )
 
 # This module is imported inside the container as well as locally, where the
 # sibling checkout does not exist and the local files are already in place.
 if modal.is_local():
-    fgvc_src = HERE.parents[1] / "EggIC" / "eggic-fgvc" / "src"
+    # EGGIC_SRC points at a checkout newer than main while the DINOv3 work is on
+    # a branch; once it merges, the default is right again.
+    fgvc_src = Path(os.environ.get(
+        "EGGIC_SRC", HERE.parents[1] / "EggIC" / "eggic-fgvc" / "src")).expanduser()
     if not (fgvc_src / "eggic_fgvc").is_dir():
         raise RuntimeError(
             f"Cannot find eggic_fgvc at {fgvc_src}. Deploying expects EggIC/ and "
-            "EggIC-portal/ as siblings under code/personal."
+            "EggIC-portal/ as siblings under code/personal, or EGGIC_SRC set."
+        )
+    build_py = (fgvc_src / "eggic_fgvc" / "models" / "build.py").read_text()
+    if "from timm.optim.optim_factory import" in build_py:
+        raise RuntimeError(
+            f"{fgvc_src} is a pre-timm-1.0 checkout: build.py imports "
+            "param_groups_layer_decay from timm.optim.optim_factory, which the "
+            "pinned timm 1.0.28 no longer exposes, and it cannot build DINOv3. "
+            "Set EGGIC_SRC to a checkout with the DINOv3 backbone."
         )
     image = (
         image
@@ -87,12 +102,15 @@ class Model:
     def load(self):
         from inference import Classifier
 
-        t0 = time.time()
-        self.version = os.environ["MODEL_VERSION"]
-        self.clf = Classifier(Path("/models") / self.version, device="cuda")
-        print(f"loaded {self.version} in {time.time() - t0:.1f}s "
-              f"({self.clf.image_size}px, T={self.clf.temperature}, "
-              f"{len(self.clf.views)} TTA views)")
+        self.versions = [v for v in os.environ["MODEL_VERSIONS"].split(",") if v]
+        self.clfs = {}
+        for version in self.versions:
+            t0 = time.time()
+            self.clfs[version] = Classifier(Path("/models") / version, device="cuda")
+            clf = self.clfs[version]
+            print(f"loaded {version} in {time.time() - t0:.1f}s "
+                  f"({clf.image_size}px, T={clf.temperature}, {len(clf.views)} TTA views)")
+        self.version = self.versions[0]
 
     @staticmethod
     def _check_key(req: dict) -> None:
@@ -119,7 +137,10 @@ class Model:
             "ts": now.isoformat(),
             "image_file": f"{month}/{sid}.jpg",
             "original_filename": filename,
-            "model_version": self.version,
+            "model_version": result.get("model_version", self.version),
+            "models_run": result.get("models_run", [self.version]),
+            "by_model": {m: {"top": r["top"], "confidence": round(r["confidence"], 6)}
+                         for m, r in result.get("by_model", {}).items()},
             "prediction": {
                 "top": result["top"],
                 "top_name": result["top_name"],
@@ -149,10 +170,28 @@ class Model:
             raise HTTPException(status_code=400,
                                 detail=f"could not decode image: {type(exc).__name__}: {exc}")
 
+        wanted = req.get("models") or [self.version]
+        unknown = [m for m in wanted if m not in self.clfs]
+        if unknown:
+            raise HTTPException(status_code=400,
+                                detail=f"unknown model(s) {unknown}; loaded: {self.versions}")
+
         t0 = time.time()
-        result = self.clf.predict(image)
+        by_model = {m: self.clfs[m].predict(image) for m in wanted}
+        if len(by_model) > 1:
+            by_model["ensemble"] = self._average(by_model, wanted)
+
+        # The ensemble is the arm the held-out evaluation actually favours, so it
+        # leads whenever more than one model ran.
+        primary = req.get("primary") or ("ensemble" if len(by_model) > 1 else wanted[0])
+        if primary not in by_model:
+            raise HTTPException(status_code=400, detail=f"primary {primary!r} was not run")
+
+        result = dict(by_model[primary])
         result["latency_ms"] = round((time.time() - t0) * 1000)
-        result["model_version"] = self.version
+        result["model_version"] = primary
+        result["models_run"] = list(by_model)
+        result["by_model"] = by_model
         result["confident"] = result["confidence"] >= CONFIDENT_AT
         result["threshold"] = CONFIDENT_AT
 
@@ -160,6 +199,22 @@ class Model:
         result["id"] = (self._store(raw, req.get("filename"), result)
                         if req.get("store") else None)
         return result
+
+    @staticmethod
+    def _average(by_model: dict, names: list) -> dict:
+        """Softmax average across arms — +7 of 224 held-out photos over either alone."""
+        totals = {}
+        for m in names:
+            for r in by_model[m]["ranked"]:
+                totals[r["key"]] = totals.get(r["key"], 0.0) + r["prob"] / len(names)
+        ranked = sorted(
+            ({**next(r for r in by_model[names[0]]["ranked"] if r["key"] == k), "prob": v}
+             for k, v in totals.items()), key=lambda r: -r["prob"])
+        return {"top": ranked[0]["key"], "top_name": ranked[0]["name"],
+                "confidence": ranked[0]["prob"],
+                "reliability": "softmax average of " + " + ".join(names),
+                "n_views": sum(by_model[m]["n_views"] for m in names),
+                "ranked": ranked}
 
 
 # Feedback edits a small JSON file and needs nothing else — no model, no GPU.
