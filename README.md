@@ -198,7 +198,7 @@ Single screen, no page scroll: photograph on the left, verdict and top three spe
 on the right, the remaining six behind a disclosure. Light by default, with a theme
 toggle persisted in localStorage.
 
-**Batches.** Up to 10 photographs at a time, identified one after another with
+**Batches.** Up to 20 photographs at a time, identified one after another with
 results appearing as they land, so review starts on the first while the rest are
 still running. A filmstrip jumps between them; `←`/`→` also work. The file picker
 cannot cap selection, so the cap is enforced afterwards and a banner names the files

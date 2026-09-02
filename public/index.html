@@ -174,10 +174,13 @@
   #correction.show { display: block; }
   #correction label { display: block; font-size: 12.5px; font-weight: 600;
                       color: var(--dim); margin-bottom: 5px; }
-  #true-species { width: 100%; padding: 9px 10px; border-radius: 9px;
+  #true-species, #other-species { width: 100%; padding: 9px 10px; border-radius: 9px;
                   border: 1px solid var(--line); background: var(--bg);
                   color: var(--fg); font-size: 13.5px; }
-  #true-species:focus { outline: 2px solid var(--ring); border-color: var(--accent); }
+  #true-species:focus, #other-species:focus { outline: 2px solid var(--ring);
+                                              border-color: var(--accent); }
+  #other-wrap { display: none; margin-top: 10px; }
+  #other-wrap.show { display: block; }
   .fb-hint { font-size: 12px; color: var(--dim); margin-top: 9px; }
 
   .banner { flex: none; margin: 0 22px 10px; padding: 8px 13px; border-radius: 9px;
@@ -236,7 +239,7 @@
 
       <label id="drop" for="file">
         <strong>Drop egg case photos here</strong>
-        <span>or click to choose — up to 10 at a time</span>
+        <span>or click to choose — up to <span id="batch-cap">20</span> at a time</span>
         <span class="formats">JPEG, PNG, HEIC and WebP. Photographs only, not video.</span>
       </label>
       <!-- iPhone photos are .heic, and neither Windows nor Android reliably map that
@@ -278,8 +281,10 @@
 window.track = window.track || function () {};
 
 const $ = id => document.getElementById(id);
-const MAX_BATCH = 10;
+const MAX_BATCH = 20;
 const MAX_BYTES = 30 * 1024 * 1024;   // a 30MB photograph is a mistake, not a submission
+// The cap is quoted in the drop zone; read it from the constant so the two cannot drift.
+$('batch-cap').textContent = MAX_BATCH;
 
 // Alphabetical and fixed, so the correction list does not reshuffle per photo.
 const SPECIES = [
@@ -294,10 +299,26 @@ const SPECIES = [
   {key: 'UndulateRay',          name: 'Undulate Ray',          latin: 'Raja undulata'},
 ];
 
+/* The Shark Trust's NW Europe eggcase guide covers thirteen species: the nine above
+   and these four. The model has no class for them, so it can only ever answer one of
+   the nine — a recorder who finds a Blue Skate has to be able to say so, or the
+   correction is lost as "wrong" with nothing attached to it. */
+const OTHER_SPECIES = [
+  {key: 'BlackmouthCatshark', name: 'Blackmouth Catshark', latin: 'Galeus melastomus'},
+  {key: 'BlueSkate',          name: 'Blue Skate',          latin: 'Dipturus batis'},
+  {key: 'StarrySkate',        name: 'Starry Skate',        latin: 'Amblyraja radiata'},
+  {key: 'WhiteSkate',         name: 'White Skate',         latin: 'Rostroraja alba'},
+];
+// Everything the guide does not cover — a species from further afield, an eggcase too
+// worn to name — is typed in rather than forced onto the nearest name on the list.
+const OTHER_KEY = '__other__';
+
 const drop = $('drop'), fileInput = $('file'), intro = $('intro'), review = $('review');
-let items = [];      // {name, file, dataUrl, state, result, error, feedback:{correct,label}, stored}
+let items = [];  // {name, file, dataUrl, state, result, error, stored,
+                 //  feedback:{correct, label, otherText}}
 let current = 0;
 let firstDone = false;   // once one result is back, the model is awake
+let coldRetryUsed = false;  // the single cold-start retry, spent at most once a session
 
 /* ---------- theme ---------- */
 if (localStorage.getItem('eggic-theme') === 'dark') document.documentElement.dataset.theme = 'dark';
@@ -352,7 +373,8 @@ drop.addEventListener('drop', e => {
 fileInput.addEventListener('change', () => accept([...fileInput.files], 'picker'));
 
 document.addEventListener('keydown', e => {
-  if (!review.classList.contains('show') || e.target.tagName === 'SELECT') return;
+  if (!review.classList.contains('show')
+      || ['SELECT', 'INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
   if (e.key === 'ArrowLeft') go(current - 1);
   else if (e.key === 'ArrowRight') go(current + 1);
   else if (e.key.toLowerCase() === 'y') mark(true);
@@ -408,7 +430,7 @@ function accept(files, source) {
     notes.unshift(
       `${usable.length} photos selected — testing the first ${MAX_BATCH}, ` +
       `${extra.length} not uploaded (${names(extra)}). ` +
-      `Ten at a time is a limit of this testing build, not the model.`);
+      `${MAX_BATCH} at a time is a limit of this testing build, not the model.`);
   }
 
   const banner = $('banner');
@@ -418,7 +440,8 @@ function accept(files, source) {
   items = usable.slice(0, MAX_BATCH).map(f => ({
     name: f.name, file: f, dataUrl: null, state: 'queued',
     ready: null, converting: false, prepError: null,
-    result: null, error: null, feedback: {correct: null, label: null}, stored: undefined,
+    result: null, error: null, feedback: {correct: null, label: null, otherText: null},
+    stored: undefined,
   }));
   current = 0;
   intro.style.display = 'none';
@@ -499,6 +522,28 @@ async function prepare(item) {
   }
 }
 
+/* The serverless hop is capped at 60 seconds and a Modal cold start has been
+   measured at 58, so a request killed mid-flight is a real outcome — and what comes
+   back then is the platform's own plain-text error page, not JSON. Parsing before
+   checking the status turned that into "Unexpected token 'A'"; read the body once
+   and report something a person can act on. */
+async function callPredict(item) {
+  const res = await fetch('/api/predict', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({image: item.dataUrl, filename: item.name, ...modelChoice()}),
+  });
+  const body = await res.text();
+  let data = null;
+  try { data = JSON.parse(body); } catch (e) { /* a platform error page, not a result */ }
+  if (data && res.ok) return data;
+  throw new Error((data && data.error) || (res.ok
+    ? 'The model’s reply did not arrive intact.'
+    : res.status >= 500
+      ? `The model did not answer in time (HTTP ${res.status}) — it may still have been waking up.`
+      : `The request was refused (HTTP ${res.status}).`));
+}
+
 /* One at a time: the model serves one request at a time anyway, and results appear
    as they land so review can start on the first photo immediately.
 
@@ -539,13 +584,20 @@ async function runBatch() {
       // seconds a HEIC conversion may have added in front of it.
       stage = 'predict';
       started = performance.now();
-      const res = await fetch('/api/predict', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({image: item.dataUrl, filename: item.name, ...modelChoice()}),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || res.statusText);
+      // The first call of a session waits on the GPU waking, which can outlast the
+      // 60s ceiling in front of it. The container is warm by the time the failure
+      // lands here, so one retry returns the answer the model already computed.
+      let data;
+      try {
+        data = await callPredict(item);
+      } catch (err) {
+        if (firstDone || coldRetryUsed) throw err;
+        coldRetryUsed = true;
+        track('predict_retried', {reason: String(err.message).slice(0, 120),
+                                  ms: Math.round(performance.now() - started)});
+        started = performance.now();
+        data = await callPredict(item);
+      }
       item.result = data; item.state = 'done'; firstDone = true; ok++;
       const top = data.ranked[0];
       track('prediction_succeeded', {
@@ -604,6 +656,10 @@ function showPhoto() {
 // Filenames come from the user's disk and land in an attribute, so they are escaped.
 const esc = s => String(s).replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const speciesOptions = (list, fb) => list.map(sp =>
+  `<option value="${sp.key}"${fb.label === sp.key ? ' selected' : ''}>`
+  + `${sp.name} — ${sp.latin}</option>`).join('');
 
 function renderStrip() {
   $('strip').innerHTML = items.map((item, i) => {
@@ -674,7 +730,7 @@ function renderPanel() {
     // waking. Saying so up front stops it reading as a hang.
     const wakeNote = (!firstDone && item.state === 'running')
       ? `<div class="wake-note">
-           <strong>The first photograph in a batch can take up to 30 seconds</strong>
+           <strong>The first photograph in a batch can take up to a minute</strong>
            while the model wakes up. Every photograph after it comes back in about a second.
            <span class="wake-fine">This demo runs on hardware that sleeps when nobody is
            using it, to keep costs down. Deployed in-house, the wait disappears entirely.</span>
@@ -724,8 +780,20 @@ function renderPanel() {
         <label for="true-species">Choose the correct species</label>
         <select id="true-species">
           <option value="">Select a species…</option>
-          ${SPECIES.map(s => `<option value="${s.key}"${fb.label === s.key ? ' selected' : ''}>${s.name} — ${s.latin}</option>`).join('')}
+          <optgroup label="The nine the model knows">
+            ${speciesOptions(SPECIES, fb)}
+          </optgroup>
+          <optgroup label="Also in the Shark Trust guide">
+            ${speciesOptions(OTHER_SPECIES, fb)}
+          </optgroup>
+          <option value="${OTHER_KEY}"${fb.label === OTHER_KEY ? ' selected' : ''}>Something else — type it in</option>
         </select>
+        <div id="other-wrap" class="${fb.label === OTHER_KEY ? 'show' : ''}">
+          <label for="other-species">What was it?</label>
+          <input id="other-species" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="Species name, or whatever you can say about it"
+                 value="${esc(fb.otherText || '')}">
+        </div>
       </div>
       <div class="fb-hint" id="fb-hint"></div>
     </div>`;
@@ -741,17 +809,47 @@ function renderPanel() {
   if (sel) sel.addEventListener('change', () => {
     const it = items[current];
     it.feedback.label = sel.value || null;
+    if (sel.value !== OTHER_KEY) it.feedback.otherText = null;
+    $('other-wrap').classList.toggle('show', sel.value === OTHER_KEY);
     renderStrip();
-    if (sel.value) track('correction_given', {
-      predicted: it.result.ranked[0].name, corrected_to: sel.value,
-      confidence: +it.result.ranked[0].prob.toFixed(3),
-      // The most valuable signal in the whole test: which pairs the model confuses.
-      confusion: `${it.result.top} → ${sel.value}`,
-    });
-    sendFeedback(it);
-    if (sel.value && current < items.length - 1) setTimeout(() => go(current + 1), 250);
+    // "Something else" is only half an answer — wait for the words before recording it.
+    if (sel.value === OTHER_KEY) { $('other-species').focus(); return; }
+    if (!sel.value) return;
+    recordCorrection(it);
+  });
+  const other = $('other-species');
+  // change, not input: fires on Enter or on leaving the field, so a half-typed name
+  // is not saved and advanced past on every keystroke.
+  if (other) other.addEventListener('change', () => {
+    const it = items[current];
+    it.feedback.otherText = other.value.trim() || null;
+    renderStrip();
+    if (it.feedback.otherText) recordCorrection(it);
   });
   showHint(item);
+}
+
+/* The select holds a key; "something else" holds whatever was typed. One reader for
+   both, so the tracking, the strip and what reaches the volume cannot disagree. */
+function correctionValue(fb) {
+  return fb.label === OTHER_KEY ? fb.otherText : fb.label;
+}
+
+function recordCorrection(it) {
+  const value = correctionValue(it.feedback);
+  if (!value) return;
+  track('correction_given', {
+    predicted: it.result.ranked[0].name, corrected_to: value,
+    confidence: +it.result.ranked[0].prob.toFixed(3),
+    // A species the model has no class for is a different failure from confusing two
+    // it does know, and only the first is a reason to widen the training set.
+    off_list: !SPECIES.some(sp => sp.key === value),
+    typed_in: it.feedback.label === OTHER_KEY,
+    // The most valuable signal in the whole test: which pairs the model confuses.
+    confusion: `${it.result.top} → ${value}`,
+  });
+  sendFeedback(it);
+  if (current < items.length - 1) setTimeout(() => go(current + 1), 250);
 }
 
 function showHint(item) {
@@ -769,6 +867,7 @@ function mark(correct) {
   item.feedback.correct = correct;
   // "Correct" is self-describing; "not correct" waits for the species picker.
   item.feedback.label = correct ? item.result.top : null;
+  item.feedback.otherText = null;
   renderStrip(); renderPanel();
   const top = item.result.ranked[0];
   track('feedback_given', {
@@ -789,7 +888,7 @@ async function sendFeedback(item) {
       body: JSON.stringify({
         id: item.result.id,
         correct: item.feedback.correct,
-        user_species: item.feedback.label,
+        user_species: correctionValue(item.feedback),
       }),
     });
     const data = await res.json();
