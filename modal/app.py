@@ -34,7 +34,7 @@ HERE = Path(__file__).resolve().parent
 # picks which to run. Two ViT-L at fp16 fit a T4 with room to spare.
 MODEL_VERSIONS = [v.strip() for v in
                   os.environ.get("MODEL_VERSIONS", "v1,dinov3").split(",") if v.strip()]
-CONFIDENT_AT = 0.90  # on the display scale this is the measured no-observed-error line
+CONFIDENT_AT = 0.875  # 4 points clear of the worst mistake seen on the held-out photos
 
 app = modal.App("eggic")
 

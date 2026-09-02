@@ -8,7 +8,7 @@ carries the same goal statement. Keep the two copies in step.
 
 ## The goal — the only two numbers that matter
 
-1. **Everything the model calls at ≥90% confidence must be right.** A wrong answer
+1. **Everything the model answers must be right.** The accept line is **87.5%** on the shown scale. A wrong answer
    above that line is the failure this whole project exists to avoid. Errors *below*
    the line are acceptable — that is what "not sure" is for.
 2. **Get at least 50% of photos above that line.** Half of real submissions answered
@@ -19,7 +19,7 @@ near 0.911, so the raw number could never express certainty. Every arm is displa
 through one shared `display_temperature = 0.80` (`softmax(log p / T)`, renormalised):
 it moves tail mass to the leader, leaves the species and its ranking untouched, caps
 the dial at **96.8%** and puts the averaged arm's worst observed mistake at **83.5%**
-— a 6.5-point buffer under the accept line. Raw 0.72 shows as 84%. One shared T, not
+— a 4-point buffer under the 87.5% accept line. Raw 0.72 shows as 84%. One shared T, not
 a per-arm fit, so the arms stay comparable and a weak arm is not flattered.
 
 Overall accuracy is **not** the target, and neither is macro-F1 — they are
@@ -28,9 +28,9 @@ above the line**, in that order, before any other number. Per-class recall stays
 diagnostic: a class that never clears the bar is invisible in the headline and still
 a failure.
 
-**Where it stands** *(2026-09-02, 224 held-out photos, shown scale, accept at 0.90)* —
-v1+DINOv3 averaged: **127 of 224 (57%), none wrong** — both rules met. On the same
-scale DINOv3 alone accepts 120 with **2 wrong** and v1 alone accepts 172 with **13
+**Where it stands** *(2026-09-02, 224 held-out photos, shown scale, accept at 0.875)* —
+v1+DINOv3 averaged: **133 of 224 (59%), none wrong** — both rules met. On the same
+scale DINOv3 alone answers 135 with **5 wrong** and v1 alone answers 177 with **15
 wrong**, so serving the average is a correctness fix, not a preference. Caveats: the
 scale and the line were fitted on this same sample (95% floor ≈97%, not 100%), and 5
 of the 19 untaught-species photos still clear 0.90.

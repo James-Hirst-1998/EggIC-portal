@@ -203,10 +203,6 @@
     .stage { grid-template-rows: auto 52vh auto; }
     .panel { overflow: visible; }
   }
-  .modelpick { display:flex; gap:.6rem; align-items:center; justify-content:center;
-    margin:1.2rem 0 .2rem; font-size:.9rem; color:var(--muted); }
-  .modelpick select { font:inherit; padding:.35rem .5rem; border-radius:8px;
-    border:1px solid var(--line); background:var(--card); color:var(--ink); }
   .compare { margin:.9rem 0 0; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
   .compare .crow { display:flex; justify-content:space-between; gap:.5rem;
     padding:.45rem .6rem; font-size:.86rem; border-top:1px solid var(--line); }
@@ -251,16 +247,7 @@
       <div class="facts">
         <div class="fact"><div class="big">9</div><div class="cap">species covered</div></div>
         <div class="fact"><div class="big">13,054</div><div class="cap">photographs learned from</div></div>
-        <div class="fact"><div class="big">90%</div><div class="cap">confidence to accept a call</div></div>
-      </div>
-
-      <div class="modelpick">
-        <label for="model">Model</label>
-        <select id="model">
-          <option value="both">Both, averaged — best on held-out photos</option>
-          <option value="v1">v1 · DINOv2</option>
-          <option value="dinov3">DINOv3</option>
-        </select>
+        <div class="fact"><div class="big">87.5%</div><div class="cap">confidence to accept a call</div></div>
       </div>
 
       <p class="more"><a href="/about">How the model works, and when to trust it →</a></p>
@@ -635,21 +622,19 @@ function renderStrip() {
 }
 
 /* ---------- result panel ---------- */
-// Which arm(s) to run. "both" averages them, which is what the held-out
-// evaluation favours; the single-model options are for comparing like for like.
-const modelSel = document.getElementById('model');
-modelSel.value = localStorage.getItem('eggic-model') || 'both';
-modelSel.addEventListener('change', () => localStorage.setItem('eggic-model', modelSel.value));
+// Both models always run and their answers are averaged — that pairing is what the
+// held-out evaluation favours. ?compare=1 exposes the individual arms for testing.
+const COMPARE = new URLSearchParams(location.search).has('compare');
+const ARMS = ['v1', 'dinov3'];
 
 function modelChoice() {
-  const v = modelSel.value;
-  return v === 'both' ? {models: ['v1', 'dinov3'], primary: 'ensemble'}
-                      : {models: [v], primary: v};
+  return {models: ARMS, primary: 'ensemble'};
 }
 
 const MODEL_LABEL = {v1: 'v1 · DINOv2', dinov3: 'DINOv3', ensemble: 'Both, averaged'};
 
 function compareHtml(d) {
+  if (!COMPARE) return '';
   const by = d.by_model || {};
   const arms = Object.keys(by).filter(m => m !== 'ensemble');
   if (arms.length < 2) return '';
