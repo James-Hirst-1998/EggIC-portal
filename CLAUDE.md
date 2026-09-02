@@ -14,27 +14,26 @@ carries the same goal statement. Keep the two copies in step.
 2. **Get at least 50% of photos above that line.** Half of real submissions answered
    automatically, every one of them correct, is the golden goal.
 
-**90% means the corrected display scale**, not raw softmax. Label smoothing caps raw
-confidence near 0.911, so the raw number could never express certainty; each arm now
-carries a `display_temperature` fitted on the 224 held-out photos so that its highest
-*observed wrong answer* lands just under 0.90. On that scale "90% or above" means
-"no error was observed here", it tops out at 98.6% rather than 100%, and it is better
-calibrated than the raw number (ensemble ECE 0.143 → 0.048). Argmax and ranking are
-untouched. The equivalent raw cut for the averaged arm is **0.72**.
+**90% means the shown scale**, not raw softmax. Label smoothing caps raw confidence
+near 0.911, so the raw number could never express certainty. Every arm is displayed
+through one shared `display_temperature = 0.80` (`softmax(log p / T)`, renormalised):
+it moves tail mass to the leader, leaves the species and its ranking untouched, caps
+the dial at **96.8%** and puts the averaged arm's worst observed mistake at **83.5%**
+— a 6.5-point buffer under the accept line. Raw 0.72 shows as 84%. One shared T, not
+a per-arm fit, so the arms stay comparable and a weak arm is not flattered.
 
 Overall accuracy is **not** the target, and neither is macro-F1 — they are
 diagnostics. Report every result as **precision above the line** and **% of photos
-above the line**, in that order, before any other number.
+above the line**, in that order, before any other number. Per-class recall stays a
+diagnostic: a class that never clears the bar is invisible in the headline and still
+a failure.
 
-Per-class recall stays a diagnostic: a class that never clears the bar is invisible
-in the headline and still a failure.
-
-**Where it stands** *(2026-09-02, 224 held-out photos, displayed scale)* — v1+DINOv3
-averaged: **143 of 224 above 0.90 (64%), none wrong** — both rules met on this sample.
-DINOv3 alone: 93 above, none wrong. **v1 alone cannot meet rule 1 at any line** — its
-worst mistake is made at 0.906 raw, above any threshold you could set. Caveats: the
-cut was fitted on this same sample (95% floor is ~97%, not 100%), and 6 of the 19
-untaught-species photos still sit above the line.
+**Where it stands** *(2026-09-02, 224 held-out photos, shown scale, accept at 0.90)* —
+v1+DINOv3 averaged: **127 of 224 (57%), none wrong** — both rules met. On the same
+scale DINOv3 alone accepts 120 with **2 wrong** and v1 alone accepts 172 with **13
+wrong**, so serving the average is a correctness fix, not a preference. Caveats: the
+scale and the line were fitted on this same sample (95% floor ≈97%, not 100%), and 5
+of the 19 untaught-species photos still clear 0.90.
 
 What that means here: the 0.90 line is the product, not a display detail. The UI
 names a species above it and presents the field below it, and the threshold
