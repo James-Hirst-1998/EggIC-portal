@@ -39,3 +39,9 @@ What that means here: the 0.90 line is the product, not a display detail. The UI
 names a species above it and presents the field below it, and the threshold
 constant lives in `modal/app.py` (`CONFIDENT_AT`). Moving it changes what the
 model promises — measure before touching it.
+
+## Git
+
+**Fetch and branch off the latest `origin/main` before starting, and rebase onto it
+before pushing.** Never work from a stale base. Brief commit messages; the reasoning
+belongs in the PR.
