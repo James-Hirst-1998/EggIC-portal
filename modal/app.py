@@ -178,7 +178,10 @@ class Model:
 
         from inference import apply_display_temperature
 
-        wanted = req.get("models") or [self.version]
+        # Default to every loaded arm, not the first: a caller that names no models
+        # (the old front-end does not) must still get the average, which is the only
+        # configuration measured as error-free at the accept line.
+        wanted = req.get("models") or list(self.versions)
         unknown = [m for m in wanted if m not in self.clfs]
         if unknown:
             raise HTTPException(status_code=400,
