@@ -40,6 +40,37 @@ names a species above it and presents the field below it, and the threshold
 constant lives in `modal/app.py` (`CONFIDENT_AT`). Moving it changes what the
 model promises — measure before touching it.
 
+## Code standards
+
+Keep it vanilla: static pages, ES modules, no build step, no framework. Build it up
+only when a real need arrives.
+
+**Supabase in the browser**
+- One client, in `public/js/services/supabase.js`. Pages never import supabase-js;
+  they call a service.
+- One service per table or bucket. A service returns plain data or throws (every
+  result goes through `unwrap`); it never returns `{data, error}` and never touches
+  the DOM.
+- Pages own the DOM and state. Pure helpers go in `public/js/lib/`.
+- Only the publishable key reaches the browser (`public/js/config.js`). The secret key
+  lives in the `eggic-supabase` Modal secret and the gitignored `.env`, nowhere else.
+
+**Database**
+- Row-level security on every table; access is an explicit policy, never RLS off.
+  Testers are `app_metadata.tester` (`is_tester()`), which only the secret key sets.
+- A schema change is a new timestamped file in `supabase/migrations/`. Never edit
+  one that has been applied.
+- Both buckets stay private. Photos go out as signed links, never public URLs —
+  the Shark Trust export shows people's faces.
+
+**Everywhere**
+- Pin CDN imports to an exact version.
+- Build DOM with `createElement` / `textContent`, never `innerHTML` with data.
+- Fail loudly: show or raise the error, never swallow it.
+- Python reaches Supabase through `scripts/_supabase.py` (scripts) or `_supabase`
+  in `modal/app.py` (serving) — not ad-hoc requests.
+- No absolute paths. Small single-purpose files.
+
 ## Git
 
 **Fetch and branch off the latest `origin/main` before starting, and rebase onto it

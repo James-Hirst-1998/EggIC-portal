@@ -8,18 +8,21 @@ Training and evaluation live in the sibling `EggIC/` repo. This one only serves 
 that repo produces.
 
 ```
-public/          the frontend — index.html, about.html, assets/
+public/          the frontend — index.html, about.html, test.html, assets/
+public/js/       ES modules for test.html; Supabase calls only in services/
 api/             Vercel serverless functions (the browser never sees the Modal key)
 modal/           app.py (GPU inference + storage) and inference.py (preprocessing)
+supabase/        migrations/ — the database, buckets and access rules
+scripts/         one-off jobs against Supabase: import, staff-test setup, testers
 local/server.py  development server; stands in for Vercel
 ```
 
 ## How a request flows
 
 ```
-browser  ──►  /api/predict  ──►  Modal (T4 GPU)  ──►  eggic-submissions volume
-              (Vercel fn)        model on the         image + JSON sidecar
-              adds the key       eggic-models volume
+browser  ──►  /api/predict  ──►  Modal (L4 GPU)  ──►  Supabase
+              (Vercel fn)        model on the         photo to a bucket,
+              adds the key       eggic-models volume  answer to a table
 ```
 
 The browser talks only to Vercel, which adds the Modal key server-side. The same
@@ -34,6 +37,12 @@ frontend runs locally against `local/server.py`, which mirrors both API routes.
 
 ```bash
 modal deploy modal/app.py
+```
+
+Once only, before the first deploy that stores to Supabase:
+
+```bash
+modal secret create eggic-supabase SUPABASE_URL=https://<project-ref>.supabase.co SUPABASE_SECRET_KEY=sb_secret_...
 ```
 
 Requires `EggIC/` checked out as a sibling directory: the image imports the model
@@ -72,6 +81,9 @@ previous photo's round trip rather than following it.
 cp .env.example .env      # fill in the two URLs and the key
 python local/server.py
 ```
+
+`/test` works locally too, but it talks straight to Supabase: answers given there
+are real.
 
 ## The model
 
@@ -114,75 +126,86 @@ models comparable on the same real photographs.
 
 ## What gets stored
 
-Volume `eggic-submissions`, one image plus one JSON sidecar per submission, filed by
-month. There is deliberately **no index file** — two people submitting at the same
-moment would overwrite each other's copy of it. The directory listing is the index.
+Everything is in one Supabase project; `supabase/migrations/` is the whole schema.
 
-```
-2026-08/20260804T153012-a1b2c3d4.jpg     the photograph, as uploaded
-2026-08/20260804T153012-a1b2c3d4.json    everything else
-```
+| | holds | readable by |
+|---|---|---|
+| bucket `submissions` | every photo the live site identified, `YYYY-MM/<id>.jpg` | secret key only |
+| table `submissions` | one row per photo: top species, confidence, all nine probabilities, each arm's answer, the tester's verdict | secret key only |
+| bucket `test-images` | the staff-test photos, under random names | logged-in testers |
+| table `test_images` | the true species of each test photo, and what the model said | secret key only |
+| table `test_answers` | one row per tester per photo: the species they chose and an optional note | each tester, own rows only |
 
 The stored photograph is what the browser sent: downscaled to 1024px on the long
-edge before upload, not the phone original.
-
-```json
-{
-  "id": "20260804T153012-a1b2c3d4",
-  "ts": "2026-08-04T15:30:12.481922+00:00",
-  "image_file": "2026-08/20260804T153012-a1b2c3d4.jpg",
-  "original_filename": "IMG_4489.jpg",
-  "model_version": "v1",
-  "prediction": {
-    "top": "BlondeRay",
-    "top_name": "Blonde Ray",
-    "confidence": 0.891234,
-    "confident": true,
-    "threshold": 0.85,
-    "ranked": {
-      "BlondeRay": 0.891234,
-      "ThornbackRay": 0.019004,
-      "CuckooRay": 0.017221,
-      "UndulateRay": 0.014882,
-      "SmallSpottedCatshark": 0.013115,
-      "Nursehound": 0.012440,
-      "SmallEyedRay": 0.011902,
-      "SpottedRay": 0.010511,
-      "FlapperSkate": 0.009691
-    }
-  },
-  "latency_ms": 210,
-  "feedback": {
-    "correct": true,
-    "user_species": "BlondeRay",
-    "ts": "2026-08-04T15:30:41.117003+00:00"
-  }
-}
-```
-
-- `ranked` holds all nine probabilities and sums to 1.0.
-- `feedback.correct` is `null` until a tester answers, then `true` or `false`.
-- `feedback.user_species` is the class key the tester chose. Pressing *Correct*
-  mirrors `prediction.top`; pressing *Not correct* leaves it `null` until they pick
-  the right species from the list.
+edge, not the phone original. In `submissions`, `correct` is null until a tester
+answers; `user_species` is the class they chose; `threshold` is the accept line in
+force when the photo was served. Submissions from before Supabase were copied in
+from the old Modal volume with `scripts/import_volume.py`.
 
 ### Pulling the data back
 
-```bash
-modal volume get eggic-submissions 2026-08 ./inbox
-```
+In the Supabase SQL editor:
 
-Analysis is a loop over the sidecars — filter to `feedback.correct == false` for the
-retraining queue. Add a database when that stops being enough, not before.
+```sql
+-- the retraining queue
+select * from submissions where correct = false order by created_at desc;
+
+-- staff on the test, scored like the model: right when sure, then how often sure
+select u.email, count(*) as answered,
+       round(avg((a.species = t.true_species)::int) filter (where a.species <> 'not_sure'), 3) as right_when_sure,
+       round(avg((a.species <> 'not_sure')::int), 3) as sure
+from test_answers a join test_images t using (image_path) join auth.users u on u.id = a.user_id
+group by u.email;
+
+-- every note, beside the true species
+select u.email, t.true_species, a.species, a.note
+from test_answers a join test_images t using (image_path) join auth.users u on u.id = a.user_id
+where a.note is not null;
+
+-- the model on the same photos: precision above the line, then share above it
+select round(avg((model_top = true_species)::int) filter (where model_confidence >= 0.875), 3) as right_above_line,
+       round(avg((model_confidence >= 0.875)::int), 3) as above_line
+from test_images;
+```
 
 ### Why feedback is a separate function
 
 `feedback` is a plain CPU function, not a method on `Model`. As a method it inherited
 `@modal.enter()`, so recording a one-word answer woke a T4 and loaded 1.2 GB of
 weights first — tens of seconds, and billed as GPU time. It now runs in a small
-container that mounts the submissions volume and nothing else.
+container that holds the Supabase secret and nothing else.
+
+## Staff test
+
+`/test` — Shark Trust staff log in, then name the species in 150 photos, one at a
+time: nine buttons plus *Not sure*, keys `1`–`9` and `0`, and an optional note saved
+with the answer. Each tester gets their own fixed shuffle and can leave and come back.
+An answer moves straight on and saves in the background; a failed save leaves the
+photo unanswered and says so. Not linked from the site, and `noindex`.
+
+```bash
+python scripts/pick_test_set.py > test_set.csv     # which photos, with true species
+python scripts/load_test_set.py test_set.csv       # make the set match: add, upload, remove
+python scripts/score_test_set.py                   # the live model's answer (GPU)
+python scripts/add_tester.py name@sharktrust.org   # prints their password; no email sent
+```
+
+The set leans on the species the model finds hardest (Thornback and Blonde most,
+Cuckoo and Flapper least), and within each, on photos the live model got wrong or
+answered below the line, plus damaged cases. Photos are held out only: the benchmark,
+the Shark Trust export's test tier, and portal submissions. A portal photo's file is
+named after the model's answer, so its true species comes from the tester's feedback
+in `submissions`, and one with no feedback is left out. `EXCLUDE` in
+`pick_test_set.py` lists photos ruled out by eye (two cases, species written in shot).
+
+The export is private (people's faces): its photos only ever go to the `test-images`
+bucket, read through 6-hour signed links by tester accounts.
 
 ## Security
+
+Logins are Supabase email + password, created by `scripts/add_tester.py` with
+`app_metadata.tester` set. Only the secret key can set that flag, and every policy
+checks it, so an account made any other way sees nothing.
 
 The Modal endpoints are public URLs, so both check a shared key (`key` in the request
 body) held in the `eggic-api-key` Modal secret and in the Vercel environment. That

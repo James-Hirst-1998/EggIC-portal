@@ -6,7 +6,7 @@ Serves everything in ``public/`` and mirrors the two API routes that Vercel
 provides in production, so the same frontend runs unchanged in both places.
 
 The one deliberate difference: this server sends ``store: false``, so nothing you
-test locally is written to the submissions volume. The deployed site stores every
+test locally is written to Supabase. The deployed site stores every
 submission. That asymmetry is the point of running locally.
 
 Reads EGGIC_PREDICT_URL and EGGIC_API_KEY from the environment or from .env at
@@ -98,6 +98,9 @@ class Handler(BaseHTTPRequestHandler):
         if path in ("/about", "/about.html"):
             self._send(200, page_html("about.html"), CONTENT_TYPES[".html"])
             return
+        if path in ("/test", "/test.html"):
+            self._send(200, page_html("test.html"), CONTENT_TYPES[".html"])
+            return
 
         # Everything else comes out of public/; resolve() plus the prefix check
         # keeps path traversal inside that directory.
@@ -134,7 +137,7 @@ class Handler(BaseHTTPRequestHandler):
             "models": req.get("models"),      # null lets Modal pick its default arm
             "primary": req.get("primary"),
             "key": self.key,
-            "store": False,   # local runs never write to the submissions volume
+            "store": False,   # local runs never write to Supabase
         }).encode()
 
         request = urllib.request.Request(
