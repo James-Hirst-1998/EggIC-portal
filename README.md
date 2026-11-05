@@ -134,7 +134,7 @@ Everything is in one Supabase project; `supabase/migrations/` is the whole schem
 | table `submissions` | one row per photo: top species, confidence, all nine probabilities, each arm's answer, the tester's verdict | secret key only |
 | bucket `test-images` | the staff-test photos, under random names | logged-in testers |
 | table `test_images` | the true species of each test photo, and what the model said | secret key only |
-| table `test_answers` | one row per tester per photo | each tester, own rows only |
+| table `test_answers` | one row per tester per photo: the species they chose and an optional note | each tester, own rows only |
 
 The stored photograph is what the browser sent: downscaled to 1024px on the long
 edge, not the phone original. In `submissions`, `correct` is null until a tester
@@ -157,6 +157,11 @@ select u.email, count(*) as answered,
 from test_answers a join test_images t using (image_path) join auth.users u on u.id = a.user_id
 group by u.email;
 
+-- every note, beside the true species
+select u.email, t.true_species, a.species, a.note
+from test_answers a join test_images t using (image_path) join auth.users u on u.id = a.user_id
+where a.note is not null;
+
 -- the model on the same photos: precision above the line, then share above it
 select round(avg((model_top = true_species)::int) filter (where model_confidence >= 0.875), 3) as right_above_line,
        round(avg((model_confidence >= 0.875)::int), 3) as above_line
@@ -172,20 +177,28 @@ container that holds the Supabase secret and nothing else.
 
 ## Staff test
 
-`/test` — Shark Trust staff log in, then name the species in ~200 photos, one at a
-time: nine buttons plus *Not sure*, keys `1`–`9` and `0`. Each tester gets their own
-fixed shuffle, answers save as they go, and they can leave and come back. Not linked
-from the site, and `noindex`.
+`/test` — Shark Trust staff log in, then name the species in 150 photos, one at a
+time: nine buttons plus *Not sure*, keys `1`–`9` and `0`, and an optional note saved
+with the answer. Each tester gets their own fixed shuffle and can leave and come back.
+An answer moves straight on and saves in the background; a failed save leaves the
+photo unanswered and says so. Not linked from the site, and `noindex`.
 
 ```bash
 python scripts/pick_test_set.py > test_set.csv     # which photos, with true species
-python scripts/load_test_set.py test_set.csv       # upright, 1024px, random names, upload
+python scripts/load_test_set.py test_set.csv       # make the set match: add, upload, remove
 python scripts/score_test_set.py                   # the live model's answer (GPU)
 python scripts/add_tester.py name@sharktrust.org   # prints their password; no email sent
 ```
 
-Photos come from the held-out benchmark and the Shark Trust export's test tier. The
-export is private (people's faces): its photos only ever go to the `test-images`
+The set leans on the species the model finds hardest (Thornback and Blonde most,
+Cuckoo and Flapper least), and within each, on photos the live model got wrong or
+answered below the line, plus damaged cases. Photos are held out only: the benchmark,
+the Shark Trust export's test tier, and portal submissions. A portal photo's file is
+named after the model's answer, so its true species comes from the tester's feedback
+in `submissions`, and one with no feedback is left out. `EXCLUDE` in
+`pick_test_set.py` lists photos ruled out by eye (two cases, species written in shot).
+
+The export is private (people's faces): its photos only ever go to the `test-images`
 bucket, read through 6-hour signed links by tester accounts.
 
 ## Security

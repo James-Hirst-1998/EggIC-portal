@@ -26,7 +26,7 @@
     font: 15px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     display: flex; flex-direction: column; -webkit-font-smoothing: antialiased;
   }
-  button, input { font-family: inherit; }
+  button, input, textarea { font-family: inherit; }
   a { color: var(--accent); }
 
   header {
@@ -72,13 +72,21 @@
 
   /* ---------- the test ---------- */
   #test { grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr); gap: 24px; }
-  .stage { min-height: 0; display: grid; grid-template-rows: 1fr auto; gap: 10px; }
+  .stage { min-height: 0; display: grid; grid-template-rows: 1fr auto auto; gap: 10px; }
   /* Absolute fill is the only way the photo is guaranteed to fit both dimensions. */
   .frame { position: relative; min-height: 0; border-radius: 14px;
            background: var(--panel); overflow: hidden; }
   .frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
   .under { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--dim); }
   .under .grow { flex: 1; }
+  .note label { display: block; font-size: 13px; font-weight: 600; margin: 0 0 4px; }
+  .note label span { font-weight: 400; color: var(--dim); }
+  .note textarea {
+    display: block; width: 100%; min-height: 54px; max-height: 160px; resize: vertical;
+    padding: 8px 11px; border-radius: 9px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--fg); font-size: 14px; line-height: 1.4;
+  }
+  .note textarea:focus { outline: 2px solid var(--ring); border-color: var(--accent); }
 
   .panel { min-height: 0; overflow-y: auto; padding-right: 4px; }
   .ask { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
@@ -92,7 +100,6 @@
   .choice:hover { border-color: var(--accent); }
   .choice.on { background: var(--accent-solid); border-color: var(--accent-solid); color: #fff; }
   .choice.on .latin, .choice.on kbd { color: #fff; }
-  .choice:disabled { cursor: progress; }
   .choice kbd { flex: none; width: 22px; height: 22px; border-radius: 6px; display: grid;
                 place-items: center; font: 600 12px/1 ui-monospace, Menlo, monospace;
                 border: 1px solid var(--line); color: var(--dim); }
@@ -105,7 +112,7 @@
     main { padding: 14px 16px 24px; }
     header { padding: 10px 16px; }
     #test { grid-template-columns: 1fr; }
-    .stage { grid-template-rows: 58vh auto; }
+    .stage { grid-template-rows: 58vh auto auto; }
     .panel { overflow: visible; }
     #progress { display: none; }
   }
@@ -149,6 +156,11 @@
         <span id="counter"></span>
         <span class="grow"></span>
         <a id="full" target="_blank" rel="noopener">Open full size ↗</a>
+      </div>
+      <div class="note">
+        <label for="note">Notes <span>(optional, saved when you choose a species)</span></label>
+        <textarea id="note" rows="2" maxlength="1000"
+                  placeholder="What made you decide, or what made it hard to tell"></textarea>
       </div>
     </div>
     <div class="panel">

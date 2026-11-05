@@ -7,14 +7,19 @@ import { SPECIES, NOT_SURE } from './species.js';
 import { seededShuffle } from './lib/seededShuffle.js';
 
 const $ = id => document.getElementById(id);
+const PRELOAD = 3;        // photos fetched ahead, so moving on is instant
+const SETTLE_MS = 250;    // answers this soon after a photo appears are a double click
 
 const state = {
   user: null,
   order: [],             // this tester's photo order
-  answers: new Map(),    // image_path -> species
+  answers: new Map(),    // image_path -> { species, note }
   urls: new Map(),       // image_path -> signed URL
   current: 0,
-  saving: false,
+  shownAt: 0,            // when the current photo appeared
+  saves: Promise.resolve(),   // saves run one at a time, in the order they were made
+  unsaved: new Set(),    // image_paths whose last save failed
+  fillingGaps: false,    // sent back to unanswered photos after the last one
 };
 
 /* ---------- screens ---------- */
@@ -87,13 +92,17 @@ function go(i) {
   $('full').href = urls.get(path);
   $('back').disabled = state.current === 0;
   $('counter').textContent = `Photo ${state.current + 1} of ${order.length}`;
-  $('progress').textContent = `${answers.size} of ${order.length} answered`;
-  $('save-error').textContent = '';
-  for (const b of $('choices').children) b.classList.toggle('on', b.dataset.key === answers.get(path));
+  renderProgress();
+  $('note').value = answers.get(path)?.note ?? '';
+  for (const b of $('choices').children) b.classList.toggle('on', b.dataset.key === answers.get(path)?.species);
   show('test');
+  state.shownAt = performance.now();
 
-  const after = order[state.current + 1];
-  if (after) new Image().src = urls.get(after);   // so the next photo is already here
+  for (const p of order.slice(state.current + 1, state.current + 1 + PRELOAD)) new Image().src = urls.get(p);
+}
+
+function renderProgress() {
+  $('progress').textContent = `${state.answers.size} of ${state.order.length} answered`;
 }
 
 // A link that ran out mid-sitting is signed again once, then left to fail visibly.
@@ -110,44 +119,58 @@ $('photo').addEventListener('error', async () => {
   }
 });
 
-async function answer(species) {
+// The answer counts at once and the next photo shows while it saves. Saves queue in
+// order, so changing an answer can never be overwritten by the older one landing late.
+function answer(species) {
   const { order, answers } = state;
-  if (state.saving || !order.length) return;
+  if (!order.length || performance.now() - state.shownAt < SETTLE_MS) return;
   const path = order[state.current];
+  const entry = { species, note: $('note').value.trim() || null };
+  answers.set(path, entry);
+  state.saves = state.saves
+    .then(() => saveAnswer(state.user.id, path, entry.species, entry.note))
+    .then(() => saved(path), err => notSaved(path, entry, err));
 
-  state.saving = true;
-  setChoicesDisabled(true);
-  try {
-    await saveAnswer(state.user.id, path, species);
-  } catch (err) {
-    $('save-error').textContent = `Not saved: ${err.message}. Try again.`;
-    return;
-  } finally {
-    state.saving = false;
-    setChoicesDisabled(false);
-  }
+  if (state.current < order.length - 1 && !state.fillingGaps) go(state.current + 1);
+  else settle().catch(err => message('Something went wrong', err.message));
+}
 
-  answers.set(path, species);
-  if (state.current < order.length - 1) return go(state.current + 1);
-  const gap = order.findIndex(p => !answers.has(p));
+function saved(path) {
+  state.unsaved.delete(path);
+  if (!state.unsaved.size) $('save-error').textContent = '';
+}
+
+// A failed save leaves the photo unanswered (unless it was answered again since), so
+// the end of the test brings the tester back to it. The message stays until it saves.
+function notSaved(path, entry, err) {
+  console.error(err);
+  if (state.answers.get(path) === entry) state.answers.delete(path);
+  state.unsaved.add(path);
+  $('save-error').textContent = `Photo ${state.order.indexOf(path) + 1} didn't save (${err.message}). ` +
+    "It's left unanswered, so you'll be brought back to it.";
+  renderProgress();
+}
+
+// After the last photo: wait for every save, then go to the next gap or finish.
+async function settle() {
+  show('loading');
+  await state.saves;
+  const gap = state.order.findIndex(p => !state.answers.has(p));
+  state.fillingGaps = gap !== -1;
   if (gap === -1) finish();
   else go(gap);
 }
 
 function finish() {
   const { order, answers } = state;
-  const unsure = [...answers.values()].filter(s => s === NOT_SURE).length;
-  $('progress').textContent = `${answers.size} of ${order.length} answered`;
+  const unsure = [...answers.values()].filter(a => a.species === NOT_SURE).length;
+  renderProgress();
   $('done-text').textContent = `You've answered all ${order.length} photos` +
     (unsure ? ` (${unsure} marked Not sure).` : '.') + ' Your answers are saved.';
   show('done');
 }
 
 /* ---------- choices and keys ---------- */
-function setChoicesDisabled(disabled) {
-  for (const b of $('choices').children) b.disabled = disabled;
-}
-
 function renderChoices() {
   const options = [...SPECIES, { key: NOT_SURE, name: 'Not sure' }];
   for (const [i, sp] of options.entries()) {
@@ -181,6 +204,11 @@ $('back').addEventListener('click', () => go(state.current - 1));
 
 document.addEventListener('keydown', e => {
   if (!$('test').classList.contains('show') || e.metaKey || e.ctrlKey || e.altKey) return;
+  // Typing a note must not answer the photo; Escape leaves the box so the keys work again.
+  if (e.target.closest('textarea')) {
+    if (e.key === 'Escape') e.target.blur();
+    return;
+  }
   if (e.key >= '1' && e.key <= '9') answer(SPECIES[Number(e.key) - 1].key);
   else if (e.key === '0') answer(NOT_SURE);
   else if (e.key === 'ArrowLeft') go(state.current - 1);

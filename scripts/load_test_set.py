@@ -1,5 +1,6 @@
-"""Upload staff-test photos and write the answer key. Re-runnable: photos already
-loaded (same source path) are skipped, so a longer CSV just adds the new ones.
+"""Make the staff-test set match a CSV: upload the photos and write the answer key.
+Re-runnable. The CSV is the whole set: photos already loaded (same source path) are
+skipped, and photos no longer in it are removed — refused if anyone has answered one.
 
     python scripts/load_test_set.py test_set.csv
 
@@ -21,6 +22,7 @@ from PIL import Image, ImageOps
 from _supabase import DATA, SPECIES, call, upload, upsert
 
 LONG_SIDE = 1024
+BATCH = 50   # names per request, to keep URLs short
 
 
 def prepare(path) -> bytes:
@@ -29,6 +31,19 @@ def prepare(path) -> bytes:
     buf = io.BytesIO()
     im.save(buf, "JPEG", quality=92)
     return buf.getvalue()
+
+
+def remove(names: list[str]) -> None:
+    """Drop photos from the set: answer-key rows first, then the stored files."""
+    for i in range(0, len(names), BATCH):
+        batch = names[i:i + BATCH]
+        names_in = "in.(" + ",".join(f'"{n}"' for n in batch) + ")"
+        answered = call("GET", f"/rest/v1/test_answers?select=image_path&image_path={names_in}").json()
+        if answered:
+            raise SystemExit(f"{len(answered)} answers are on photos this CSV drops; "
+                             "keep those photos in the CSV")
+        call("DELETE", f"/rest/v1/test_images?image_path={names_in}")
+        call("DELETE", "/storage/v1/object/test-images", json={"prefixes": batch})
 
 
 def main() -> None:
@@ -40,9 +55,14 @@ def main() -> None:
     if missing:
         raise SystemExit(f"{len(missing)} photos not found under {DATA}, e.g. {missing[:3]}")
 
-    loaded = {r["source"] for r in call("GET", "/rest/v1/test_images?select=source").json()}
+    current = call("GET", "/rest/v1/test_images?select=image_path,source").json()
+    loaded = {r["source"] for r in current}
     todo = [r for r in rows if r["path"] not in loaded]
-    print(f"{len(rows)} in the CSV, {len(rows) - len(todo)} already loaded, {len(todo)} to add")
+    keep = {r["path"] for r in rows}
+    gone = [r["image_path"] for r in current if r["source"] not in keep]
+    print(f"{len(rows)} in the CSV, {len(rows) - len(todo)} already loaded, "
+          f"{len(todo)} to add, {len(gone)} to remove")
+    remove(gone)
 
     for i, r in enumerate(todo, 1):
         name = f"{uuid.uuid4().hex[:12]}.jpg"
