@@ -11,8 +11,9 @@ served model is a volume put plus an env change — no rebuild:
 The model *definition* is imported from the sibling EggIC checkout, so the served
 network cannot drift from the weights that produced it.
 
-Submissions are written to the ``eggic-submissions`` Volume only when the caller
-asks for it. The on-disk schema is documented in the README.
+Submissions are written to Supabase (photo to the ``submissions`` bucket, a row
+to the ``submissions`` table) only when the caller asks for it. The schema is
+``supabase/migrations/``.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ import io
 import json
 import math
 import os
+import re
 import time
 import uuid
 from datetime import datetime, timezone
@@ -84,15 +86,31 @@ if modal.is_local():
     )
 
 models = modal.Volume.from_name("eggic-models", create_if_missing=True)
-submissions = modal.Volume.from_name("eggic-submissions", create_if_missing=True)
 api_key = modal.Secret.from_name("eggic-api-key")
+# SUPABASE_URL and SUPABASE_SECRET_KEY. The secret key bypasses row-level security,
+# so it lives here and never in Vercel or a page.
+supabase = modal.Secret.from_name("eggic-supabase")
+
+SUBMISSION_ID = re.compile(r"\d{8}T\d{6}-[0-9a-f]{8}")
+
+
+def _supabase(method: str, path: str, **kwargs):
+    """One call to the Supabase REST or Storage API as the service role."""
+    import httpx
+
+    key = os.environ["SUPABASE_SECRET_KEY"]
+    headers = {"apikey": key, **kwargs.pop("headers", {})}
+    resp = httpx.request(method, os.environ["SUPABASE_URL"].rstrip("/") + path,
+                         headers=headers, timeout=20, **kwargs)
+    resp.raise_for_status()
+    return resp
 
 
 @app.cls(
     image=image,
     gpu="L4",   # fp32 ViT-L x2; the T4 was only viable at fp16, which DINOv3 cannot use
-    volumes={"/models": models, "/submissions": submissions},
-    secrets=[api_key],
+    volumes={"/models": models},
+    secrets=[api_key, supabase],
     # Idle GPU time is the main cost here, not the inference. 60s covers the gaps
     # inside a review session; anything longer just burns credits after you stop.
     scaledown_window=60,
@@ -126,40 +144,28 @@ class Model:
             raise HTTPException(status_code=401, detail="bad key")
 
     def _store(self, raw: bytes, filename: str | None, result: dict) -> str:
-        """One image plus one JSON sidecar per submission.
-
-        Deliberately no index file: two people submitting at the same moment would
-        write over each other's copy of it. The directory listing is the index.
-        """
+        """The photo to the submissions bucket, everything else to one row."""
         now = datetime.now(timezone.utc)
         sid = f"{now.strftime('%Y%m%dT%H%M%S')}-{uuid.uuid4().hex[:8]}"
-        month = now.strftime("%Y-%m")
-        folder = Path("/submissions") / month
-        folder.mkdir(parents=True, exist_ok=True)
+        image_path = f"{now.strftime('%Y-%m')}/{sid}.jpg"
 
-        (folder / f"{sid}.jpg").write_bytes(raw)
-        (folder / f"{sid}.json").write_text(json.dumps({
+        _supabase("POST", f"/storage/v1/object/submissions/{image_path}",
+                  content=raw, headers={"Content-Type": "image/jpeg"})
+        _supabase("POST", "/rest/v1/submissions", headers={"Prefer": "return=minimal"}, json={
             "id": sid,
-            "ts": now.isoformat(),
-            "image_file": f"{month}/{sid}.jpg",
-            "original_filename": filename,
+            "created_at": now.isoformat(),
+            "image_path": image_path,
+            "filename": filename,
             "model_version": result.get("model_version", self.version),
-            "models_run": result.get("models_run", [self.version]),
+            "top": result["top"],
+            "confidence": result["confidence"],
+            "confident": result["confident"],
+            "threshold": CONFIDENT_AT,
+            "ranked": {r["key"]: round(r["prob"], 6) for r in result["ranked"]},
             "by_model": {m: {"top": r["top"], "confidence": round(r["confidence"], 6)}
                          for m, r in result.get("by_model", {}).items()},
-            "prediction": {
-                "top": result["top"],
-                "top_name": result["top_name"],
-                "confidence": result["confidence"],
-                "confident": result["confident"],
-                "threshold": CONFIDENT_AT,
-                "ranked": {r["key"]: round(r["prob"], 6) for r in result["ranked"]},
-            },
             "latency_ms": result["latency_ms"],
-            # Filled in by /feedback; null means nobody has answered yet.
-            "feedback": {"correct": None, "user_species": None, "ts": None},
-        }, indent=2))
-        submissions.commit()
+        })
         return sid
 
     @modal.fastapi_endpoint(method="POST", docs=False)
@@ -241,9 +247,11 @@ class Model:
                 "ranked": ranked}
 
 
-# Feedback edits a small JSON file and needs nothing else — no model, no GPU.
+# Feedback updates one row and needs nothing else — no model, no GPU.
 # Kept off the Model class deliberately: as a method it inherited @modal.enter(),
 # so saving a one-line answer paid a GPU cold start and 1.2 GB of weight loading.
+# It stays on Modal rather than moving to Vercel so the Supabase secret key lives
+# in one place only.
 feedback_image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install("fastapi[standard]==0.115.12")
@@ -252,8 +260,7 @@ feedback_image = (
 
 @app.function(
     image=feedback_image,
-    volumes={"/submissions": submissions},
-    secrets=[api_key],
+    secrets=[api_key, supabase],
     timeout=30,
 )
 @modal.fastapi_endpoint(method="POST", docs=False)
@@ -265,21 +272,15 @@ def feedback(req: dict):
         raise HTTPException(status_code=401, detail="bad key")
 
     sid = str(req.get("id") or "")
-    if not sid:
-        raise HTTPException(status_code=400, detail="no submission id")
+    if not SUBMISSION_ID.fullmatch(sid):
+        raise HTTPException(status_code=400, detail=f"bad submission id {sid!r}")
 
-    # Another container wrote this file, so the local view must be refreshed.
-    submissions.reload()
-    matches = list(Path("/submissions").glob(f"*/{sid}.json"))
-    if not matches:
+    rows = _supabase(
+        "PATCH", f"/rest/v1/submissions?id=eq.{sid}",
+        headers={"Prefer": "return=representation"},
+        json={"correct": req.get("correct"), "user_species": req.get("user_species"),
+              "feedback_at": datetime.now(timezone.utc).isoformat()},
+    ).json()
+    if not rows:
         raise HTTPException(status_code=404, detail=f"no submission {sid}")
-
-    sidecar = json.loads(matches[0].read_text())
-    sidecar["feedback"] = {
-        "correct": req.get("correct"),
-        "user_species": req.get("user_species"),
-        "ts": datetime.now(timezone.utc).isoformat(),
-    }
-    matches[0].write_text(json.dumps(sidecar, indent=2))
-    submissions.commit()
     return {"stored": True, "id": sid}
