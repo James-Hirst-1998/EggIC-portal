@@ -72,6 +72,24 @@ only when a real need arrives.
   in `modal/app.py` (serving) — not ad-hoc requests.
 - No absolute paths. Small single-purpose files.
 
+## Where the served pipeline is going
+
+Every photo will hit two stages in one Modal call. **Segment** first: find every egg
+case and its mask, or stop with `no_egg_case` (nothing there), `too_many` (more than
+`MAX_CASES = 10`) or `unsure` (a messy layout where it doubts its own masks). The last two
+go to a person for manual identification. Only the case count triggers `too_many`, never
+clutter such as stones, weed or a hand. Then **classify** each case on its own crop, with
+the 87.5% line applied per case.
+
+```
+{"status": "ok" | "no_egg_case" | "too_many" | "unsure", "count": 3,
+ "cases": [{"box": [x0, y0, x1, y1], "mask": "<RLE>",
+            "probabilities": {...}, "top": "ThornbackRay", "confident": true}]}
+```
+
+Today only classification is served, on the whole photo. The segmenter is built and
+measured in `EggIC/multispecies/`.
+
 ## Git
 
 **Fetch and branch off the latest `origin/main` before starting, and rebase onto it
