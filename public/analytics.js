@@ -44,4 +44,12 @@
       }
     } catch (e) { /* ignore */ }
   };
+
+  /* The staff test page names its logged-in tester, and lets go of them on sign-out. */
+  window.identify = function (id, props) {
+    try { posthog.identify(id, props || {}); } catch (e) { /* ignore */ }
+  };
+  window.forget = function () {
+    try { posthog.reset(); } catch (e) { /* ignore */ }
+  };
 })();
