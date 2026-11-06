@@ -184,6 +184,12 @@ shuffle, can skip photos (*Unanswered only* steps through the ones left) and can
 and come back. An answer moves straight on and saves in the background; a failed save
 leaves the photo unanswered and says so. Not linked from the site, and `noindex`.
 
+PostHog sees the page like any other, with each tester identified by their login
+email, plus `test_started`, `test_answered` (species, seconds on the photo, zoom,
+note, changed), `test_moved` (next/back, key or button, from an unanswered photo),
+`test_filter`, `test_save_failed`, `test_finished` and `test_login_failed`. The
+answers themselves are in `test_answers`; PostHog is for how people get there.
+
 ```bash
 python scripts/pick_test_set.py > test_set.csv     # which photos, with true species
 python scripts/load_test_set.py test_set.csv       # make the set match: add, upload, remove

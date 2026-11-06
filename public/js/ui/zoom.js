@@ -5,6 +5,7 @@ const MAX = 8;
 
 export function zoomable(frame, img) {
   let s = 1, x = 0, y = 0;     // transform: translate(x, y) scale(s), origin top left
+  let peak = 1;                // the most it has been zoomed since the last reset
   const pointers = new Map();  // pointerId -> [x, y] in the frame
   let pinch = null;            // { d, s }: finger spread and scale when a pinch began
 
@@ -14,6 +15,7 @@ export function zoomable(frame, img) {
     y = Math.min(0, Math.max(h - h * s, y));
     img.style.transform = s === 1 ? '' : `translate(${x}px, ${y}px) scale(${s})`;
     frame.classList.toggle('zoomed', s > 1);
+    peak = Math.max(peak, s);
   }
 
   // Zoom to scale `to`, keeping the frame point (px, py) still.
@@ -26,7 +28,7 @@ export function zoomable(frame, img) {
   }
 
   function reset() {
-    s = 1; x = 0; y = 0;
+    s = 1; x = 0; y = 0; peak = 1;
     apply();
   }
 
@@ -75,5 +77,5 @@ export function zoomable(frame, img) {
   frame.addEventListener('pointerup', lift);
   frame.addEventListener('pointercancel', lift);
 
-  return { reset };
+  return { reset, peak: () => Math.round(peak * 10) / 10 };
 }

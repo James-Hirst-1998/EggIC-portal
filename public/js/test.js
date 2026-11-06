@@ -8,6 +8,9 @@ import { seededShuffle } from './lib/seededShuffle.js';
 import { zoomable } from './ui/zoom.js';
 
 const $ = id => document.getElementById(id);
+// analytics.js defines window.track; a tracker blocker can stop it loading, and that
+// must not take the test down with it.
+const track = (name, props) => window.track?.(name, props);
 const PRELOAD = 3;        // photos fetched ahead, so moving on is instant
 const SETTLE_MS = 250;    // answers this soon after a photo appears are a double click
 
@@ -52,18 +55,21 @@ $('login-form').addEventListener('submit', async e => {
     await signIn($('email').value.trim(), $('password').value);
   } catch (err) {
     console.error(err);
+    track('test_login_failed');
     $('login-error').textContent = 'That email and password did not match.';
   } finally {
     $('login-btn').disabled = false;
   }
 });
 
-$('signout').addEventListener('click', () => signOut().catch(console.error));
+// Analytics forget the tester too, so whoever logs in next on this browser is new.
+$('signout').addEventListener('click', () => signOut().then(() => window.forget?.()).catch(console.error));
 
 onUserChange(user => {
   state.user = user;
   $('signout').style.display = user ? '' : 'none';
   $('progress').textContent = '';
+  if (user) window.identify?.(user.id, { email: user.email });
   if (user) start().catch(err => message('Something went wrong', err.message));
   else show('login');
 });
@@ -78,6 +84,7 @@ async function start() {
   state.answers = answers;
   state.order = seededShuffle(names, state.user.id);
   state.urls = await signTestImages(state.order);
+  track('test_started', { answered: answers.size, total: names.length });
 
   const next = state.order.findIndex(p => !state.answers.has(p));
   if (next === -1) finish();
@@ -123,9 +130,13 @@ function neighbour(dir) {
   return -1;
 }
 
-function move(dir) {
+// via: what moved them on, 'key', 'button' or 'filter'.
+function move(dir, via) {
   const i = neighbour(dir);
-  if (i !== -1) go(i);
+  if (i === -1) return;
+  track('test_moved', { dir: dir > 0 ? 'next' : 'back', via, zoom: zoom.peak(),
+                        unanswered: !state.answers.has(state.order[state.current]) });
+  go(i);
 }
 
 // A link that ran out mid-sitting is signed again once, then left to fail visibly.
@@ -144,12 +155,19 @@ $('photo').addEventListener('error', async () => {
 
 // The answer counts at once and the next photo shows while it saves. Saves queue in
 // order, so changing an answer can never be overwritten by the older one landing late.
-function answer(species) {
+function answer(species, via) {
   const { order, answers } = state;
   if (!order.length || performance.now() - state.shownAt < SETTLE_MS) return;
   const path = order[state.current];
+  const before = answers.get(path);
   const entry = { species, note: $('note').value.trim() || null };
   answers.set(path, entry);
+  track('test_answered', {
+    photo: path, species, via, zoom: zoom.peak(), note: !!entry.note,
+    seconds: Math.round((performance.now() - state.shownAt) / 100) / 10,
+    revisit: !!before, changed: !!before && before.species !== species,
+    answered: answers.size,
+  });
   state.saves = state.saves
     .then(() => saveAnswer(state.user.id, path, entry.species, entry.note))
     .then(() => saved(path), err => notSaved(path, entry, err));
@@ -168,6 +186,7 @@ function saved(path) {
 // the end of the test brings the tester back to it. The message stays until it saves.
 function notSaved(path, entry, err) {
   console.error(err);
+  track('test_save_failed', { photo: path, error: err.message });
   if (state.answers.get(path) === entry) state.answers.delete(path);
   state.unsaved.add(path);
   $('save-error').textContent = `Photo ${state.order.indexOf(path) + 1} didn't save (${err.message}). ` +
@@ -181,7 +200,10 @@ async function settle() {
   show('loading');
   await state.saves;
   const gap = state.order.findIndex(p => !state.answers.has(p));
-  if (gap === -1) return finish();
+  if (gap === -1) {
+    track('test_finished', { total: state.order.length });
+    return finish();
+  }
   $('only-unanswered').checked = true;
   go(gap);
 }
@@ -218,7 +240,7 @@ function renderChoices() {
       label.append(latin);
     }
     b.append(kbd, label);
-    b.addEventListener('click', () => answer(sp.key));
+    b.addEventListener('click', () => answer(sp.key, 'click'));
     $('choices').append(b);
   }
 }
@@ -228,11 +250,12 @@ $('review').addEventListener('click', () => {
   $('only-unanswered').checked = false;
   go(0);
 });
-$('back').addEventListener('click', () => move(-1));
-$('next').addEventListener('click', () => move(+1));
+$('back').addEventListener('click', () => move(-1, 'button'));
+$('next').addEventListener('click', () => move(+1, 'button'));
 // Ticking the filter on an answered photo moves straight to the next unanswered one.
 $('only-unanswered').addEventListener('change', e => {
-  if (e.target.checked && state.answers.has(state.order[state.current])) move(+1);
+  track('test_filter', { on: e.target.checked });
+  if (e.target.checked && state.answers.has(state.order[state.current])) move(+1, 'filter');
   else renderProgress();
 });
 
@@ -243,8 +266,8 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') e.target.blur();
     return;
   }
-  if (e.key >= '1' && e.key <= '9') answer(SPECIES[Number(e.key) - 1].key);
-  else if (e.key === '0') answer(NOT_SURE);
-  else if (e.key === 'ArrowLeft') move(-1);
-  else if (e.key === 'ArrowRight') move(+1);
+  if (e.key >= '1' && e.key <= '9') answer(SPECIES[Number(e.key) - 1].key, 'key');
+  else if (e.key === '0') answer(NOT_SURE, 'key');
+  else if (e.key === 'ArrowLeft') move(-1, 'key');
+  else if (e.key === 'ArrowRight') move(+1, 'key');
 });
