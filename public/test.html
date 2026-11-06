@@ -1,210 +1,537 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Shark Trust — Egg Case Test</title>
-<meta name="robots" content="noindex">
-<meta name="theme-color" content="#08807f">
-<link rel="icon" href="/assets/shark_trust.png">
-<script src="/analytics.js"></script>
-<style>
-  /* Same palette as the identifier; the toggle stamps data-theme="dark" on <html>. */
-  :root {
-    --bg:#ffffff; --panel:#f5f7f7; --fg:#101d1c; --dim:#5c6b69;
-    --line:#e2e7e6; --accent:#08807f; --accent-soft:#e8f3f2;
-    --bad:#a8342a; --plate:#ffffff; --ring:rgba(8,128,127,.35); --accent-solid:#08807f;
-  }
-  :root[data-theme="dark"] {
-    --bg:#0d1312; --panel:#151c1b; --fg:#e7ecea; --dim:#94a3a1; --line:#242f2d;
-    --accent:#54bcb9; --accent-soft:#112b2a; --bad:#e08b83;
-    --plate:#ffffff; --ring:rgba(84,188,185,.4); --accent-solid:#0d6f6d;
-  }
-  * { box-sizing: border-box; }
-  html, body { height: 100%; }
-  body {
-    margin: 0; background: var(--bg); color: var(--fg);
-    font: 15px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    display: flex; flex-direction: column; -webkit-font-smoothing: antialiased;
-  }
-  button, input, textarea { font-family: inherit; }
-  a { color: var(--accent); }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shark Trust — Egg Case Test</title>
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#08807f" />
+    <link rel="icon" href="/assets/shark_trust.png" />
+    <script src="/analytics.js"></script>
+    <style>
+      /* Same palette as the identifier; the toggle stamps data-theme="dark" on <html>. */
+      :root {
+        --bg: #ffffff;
+        --panel: #f5f7f7;
+        --fg: #101d1c;
+        --dim: #5c6b69;
+        --line: #e2e7e6;
+        --accent: #08807f;
+        --accent-soft: #e8f3f2;
+        --bad: #a8342a;
+        --plate: #ffffff;
+        --ring: rgba(8, 128, 127, 0.35);
+        --accent-solid: #08807f;
+      }
+      :root[data-theme="dark"] {
+        --bg: #0d1312;
+        --panel: #151c1b;
+        --fg: #e7ecea;
+        --dim: #94a3a1;
+        --line: #242f2d;
+        --accent: #54bcb9;
+        --accent-soft: #112b2a;
+        --bad: #e08b83;
+        --plate: #ffffff;
+        --ring: rgba(84, 188, 185, 0.4);
+        --accent-solid: #0d6f6d;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          15px/1.5 ui-sans-serif,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        display: flex;
+        flex-direction: column;
+        -webkit-font-smoothing: antialiased;
+      }
+      button,
+      input,
+      textarea {
+        font-family: inherit;
+      }
+      a {
+        color: var(--accent);
+      }
 
-  header {
-    flex: none; display: flex; align-items: center; gap: 13px;
-    padding: 10px 22px; border-bottom: 1px solid var(--line);
-  }
-  header .logo { height: 44px; width: auto; background: var(--plate);
-                 border-radius: 5px; padding: 3px; flex: none; }
-  .brand { display: flex; flex-direction: column; line-height: 1.25; }
-  .brand .org { font-size: 11px; font-weight: 700; letter-spacing: .13em;
-                text-transform: uppercase; color: var(--accent); }
-  .brand h1 { font-size: 16px; font-weight: 600; margin: 0; }
-  header .grow { flex: 1; }
-  #progress { font-size: 12.5px; color: var(--dim); font-variant-numeric: tabular-nums; }
-  .hbtn {
-    flex: none; background: none; border: 1px solid var(--line); color: var(--dim);
-    border-radius: 8px; height: 32px; padding: 0 12px; cursor: pointer; font-size: 13px;
-  }
-  .hbtn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-  .hbtn:disabled { opacity: .45; cursor: default; }
-  #theme { width: 32px; padding: 0; font-size: 14px; }
+      header {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        padding: 10px 22px;
+        border-bottom: 1px solid var(--line);
+      }
+      header .logo {
+        height: 44px;
+        width: auto;
+        background: var(--plate);
+        border-radius: 5px;
+        padding: 3px;
+        flex: none;
+      }
+      .brand {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.25;
+      }
+      .brand .org {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      .brand h1 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0;
+      }
+      header .grow {
+        flex: 1;
+      }
+      #progress {
+        font-size: 12.5px;
+        color: var(--dim);
+        font-variant-numeric: tabular-nums;
+      }
+      .hbtn {
+        flex: none;
+        background: none;
+        border: 1px solid var(--line);
+        color: var(--dim);
+        border-radius: 8px;
+        height: 32px;
+        padding: 0 12px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .hbtn:hover:not(:disabled) {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .hbtn:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      #theme {
+        width: 32px;
+        padding: 0;
+        font-size: 14px;
+      }
 
-  main { flex: 1; min-height: 0; padding: 18px 22px; }
-  section { display: none; height: 100%; }
-  section.show { display: grid; }
+      main {
+        flex: 1;
+        min-height: 0;
+        padding: 18px 22px;
+      }
+      section {
+        display: none;
+        height: 100%;
+      }
+      section.show {
+        display: grid;
+      }
 
-  /* ---------- login / messages ---------- */
-  .center { place-items: center; }
-  .card { width: min(380px, 100%); }
-  .card h2 { font-size: 21px; font-weight: 600; margin: 0 0 6px; letter-spacing: -.01em; }
-  .card p { color: var(--dim); font-size: 14px; margin: 0 0 20px; }
-  .card label { display: block; font-size: 13px; font-weight: 600; margin: 0 0 5px; }
-  .card input {
-    width: 100%; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line);
-    background: var(--panel); color: var(--fg); font-size: 15px; margin-bottom: 14px;
-  }
-  .card input:focus { outline: 2px solid var(--ring); border-color: var(--accent); }
-  .primary {
-    width: 100%; padding: 11px; border-radius: 9px; border: none; cursor: pointer;
-    background: var(--accent-solid); color: #fff; font-size: 15px; font-weight: 600;
-  }
-  .primary:disabled { opacity: .6; cursor: default; }
-  .error { color: var(--bad); font-size: 13.5px; min-height: 20px; margin-top: 10px; }
+      /* ---------- login / messages ---------- */
+      .center {
+        place-items: center;
+      }
+      .card {
+        width: min(380px, 100%);
+      }
+      .card h2 {
+        font-size: 21px;
+        font-weight: 600;
+        margin: 0 0 6px;
+        letter-spacing: -0.01em;
+      }
+      .card p {
+        color: var(--dim);
+        font-size: 14px;
+        margin: 0 0 20px;
+      }
+      .card label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        margin: 0 0 5px;
+      }
+      .card input {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 9px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--fg);
+        font-size: 15px;
+        margin-bottom: 14px;
+      }
+      .card input:focus {
+        outline: 2px solid var(--ring);
+        border-color: var(--accent);
+      }
+      .primary {
+        width: 100%;
+        padding: 11px;
+        border-radius: 9px;
+        border: none;
+        cursor: pointer;
+        background: var(--accent-solid);
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .primary:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      .error {
+        color: var(--bad);
+        font-size: 13.5px;
+        min-height: 20px;
+        margin-top: 10px;
+      }
 
-  /* ---------- the test ---------- */
-  #test { grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr); gap: 24px; }
-  .stage { min-height: 0; display: grid; grid-template-rows: 1fr auto auto; gap: 10px; }
-  /* Absolute fill is the only way the photo is guaranteed to fit both dimensions. */
-  .frame { position: relative; min-height: 0; border-radius: 14px; background: var(--panel);
-           overflow: hidden; cursor: zoom-in; user-select: none; touch-action: pan-y; }
-  .frame.zoomed { cursor: grab; touch-action: none; }
-  .frame.zoomed:active { cursor: grabbing; }
-  .frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
-               transform-origin: 0 0; -webkit-user-drag: none; }
-  .zoom-hint { position: absolute; right: 8px; bottom: 8px; padding: 3px 8px; border-radius: 6px;
-               font-size: 11.5px; background: rgba(0,0,0,.5); color: #fff; pointer-events: none; }
-  .under { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
-           font-size: 13px; color: var(--dim); }
-  .under .grow { flex: 1; }
-  .only { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
-  .only input { margin: 0; accent-color: var(--accent-solid); }
-  .note label { display: block; font-size: 13px; font-weight: 600; margin: 0 0 4px; }
-  .note label span { font-weight: 400; color: var(--dim); }
-  .note textarea {
-    display: block; width: 100%; min-height: 54px; max-height: 160px; resize: vertical;
-    padding: 8px 11px; border-radius: 9px; border: 1px solid var(--line);
-    background: var(--panel); color: var(--fg); font-size: 14px; line-height: 1.4;
-  }
-  .note textarea:focus { outline: 2px solid var(--ring); border-color: var(--accent); }
+      /* ---------- the test ---------- */
+      #test {
+        grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+        gap: 24px;
+      }
+      .stage {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: 1fr auto auto;
+        gap: 10px;
+      }
+      /* Absolute fill is the only way the photo is guaranteed to fit both dimensions. */
+      .frame {
+        position: relative;
+        min-height: 0;
+        border-radius: 14px;
+        background: var(--panel);
+        overflow: hidden;
+        cursor: zoom-in;
+        user-select: none;
+        touch-action: pan-y;
+      }
+      .frame.zoomed {
+        cursor: grab;
+        touch-action: none;
+      }
+      .frame.zoomed:active {
+        cursor: grabbing;
+      }
+      .frame img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        transform-origin: 0 0;
+        -webkit-user-drag: none;
+      }
+      .zoom-hint {
+        position: absolute;
+        right: 8px;
+        bottom: 8px;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 11.5px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        pointer-events: none;
+      }
+      .under {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 10px;
+        font-size: 13px;
+        color: var(--dim);
+      }
+      .under .grow {
+        flex: 1;
+      }
+      .only {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .only input {
+        margin: 0;
+        accent-color: var(--accent-solid);
+      }
+      .note label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        margin: 0 0 4px;
+      }
+      .note label span {
+        font-weight: 400;
+        color: var(--dim);
+      }
+      .note textarea {
+        display: block;
+        width: 100%;
+        min-height: 54px;
+        max-height: 160px;
+        resize: vertical;
+        padding: 8px 11px;
+        border-radius: 9px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--fg);
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      .note textarea:focus {
+        outline: 2px solid var(--ring);
+        border-color: var(--accent);
+      }
 
-  .panel { min-height: 0; overflow-y: auto; padding-right: 4px; }
-  .ask { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
-  .hint { font-size: 13px; color: var(--dim); margin: 0 0 14px; }
-  .hint b { font-weight: 600; color: var(--fg); }
-  .keys { font-size: 12px; color: var(--dim); margin: -6px 0 14px; }
-  @media (hover: none) { .keys { display: none; } }   /* no keyboard on a phone */
-  .choices { display: grid; gap: 7px; }
-  .choice {
-    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
-    padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line);
-    background: var(--bg); color: var(--fg); cursor: pointer;
-  }
-  .choice:hover { border-color: var(--accent); }
-  .choice.on { background: var(--accent-solid); border-color: var(--accent-solid); color: #fff; }
-  .choice.on .latin, .choice.on kbd { color: #fff; }
-  .choice kbd { flex: none; width: 22px; height: 22px; border-radius: 6px; display: grid;
-                place-items: center; font: 600 12px/1 ui-monospace, Menlo, monospace;
-                border: 1px solid var(--line); color: var(--dim); }
-  .choice .name { font-size: 14.5px; font-weight: 550; line-height: 1.25; }
-  .choice .latin { display: block; font-size: 12px; font-style: italic; color: var(--dim); }
-  .choice.unsure { margin-top: 6px; }
+      .panel {
+        min-height: 0;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+      .ask {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0 0 4px;
+      }
+      .hint {
+        font-size: 13px;
+        color: var(--dim);
+        margin: 0 0 14px;
+      }
+      .hint b {
+        font-weight: 600;
+        color: var(--fg);
+      }
+      .keys {
+        font-size: 12px;
+        color: var(--dim);
+        margin: -6px 0 14px;
+      }
+      @media (hover: none) {
+        .keys {
+          display: none;
+        }
+      } /* no keyboard on a phone */
+      .choices {
+        display: grid;
+        gap: 7px;
+      }
+      .choice {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        text-align: left;
+        padding: 9px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--bg);
+        color: var(--fg);
+        cursor: pointer;
+      }
+      .choice:hover {
+        border-color: var(--accent);
+      }
+      .choice.on {
+        background: var(--accent-solid);
+        border-color: var(--accent-solid);
+        color: #fff;
+      }
+      .choice.on .latin,
+      .choice.on kbd {
+        color: #fff;
+      }
+      .choice kbd {
+        flex: none;
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        display: grid;
+        place-items: center;
+        font:
+          600 12px/1 ui-monospace,
+          Menlo,
+          monospace;
+        border: 1px solid var(--line);
+        color: var(--dim);
+      }
+      .choice .name {
+        font-size: 14.5px;
+        font-weight: 550;
+        line-height: 1.25;
+      }
+      .choice .latin {
+        display: block;
+        font-size: 12px;
+        font-style: italic;
+        color: var(--dim);
+      }
+      .choice.unsure {
+        margin-top: 6px;
+      }
 
-  @media (max-width: 760px) {
-    body { height: auto; }
-    main { padding: 14px 16px 24px; }
-    header { padding: 10px 16px; }
-    #test { grid-template-columns: 1fr; }
-    .stage { grid-template-rows: 58vh auto auto; }
-    .panel { overflow: visible; }
-    #progress { display: none; }
-  }
-</style>
-</head>
-<body>
-
-<header>
-  <img class="logo" src="/assets/shark_trust.png" alt="Shark Trust" onerror="this.remove()">
-  <div class="brand">
-    <span class="org">Shark Trust</span>
-    <h1>Egg Case Test</h1>
-  </div>
-  <div class="grow"></div>
-  <span id="progress"></span>
-  <button class="hbtn" id="signout" type="button" style="display:none">Sign out</button>
-  <button class="hbtn" id="theme" type="button" title="Switch theme" aria-label="Switch theme">◐</button>
-</header>
-
-<main>
-  <section id="loading" class="center show"><p class="hint">Loading…</p></section>
-
-  <section id="login" class="center">
-    <form class="card" id="login-form">
-      <h2>Egg case test</h2>
-      <p>Log in with the details James sent you.</p>
-      <label for="email">Email</label>
-      <input id="email" type="email" autocomplete="username" required>
-      <label for="password">Password</label>
-      <input id="password" type="password" autocomplete="current-password" required>
-      <button class="primary" id="login-btn" type="submit">Log in</button>
-      <div class="error" id="login-error"></div>
-    </form>
-  </section>
-
-  <section id="test">
-    <div class="stage">
-      <div class="frame" id="frame">
-        <img id="photo" alt="Egg case photograph" draggable="false">
-        <span class="zoom-hint">Scroll or pinch to zoom · double-click to reset</span>
+      @media (max-width: 760px) {
+        body {
+          height: auto;
+        }
+        main {
+          padding: 14px 16px 24px;
+        }
+        header {
+          padding: 10px 16px;
+        }
+        #test {
+          grid-template-columns: 1fr;
+        }
+        .stage {
+          grid-template-rows: 58vh auto auto;
+        }
+        .panel {
+          overflow: visible;
+        }
+        #progress {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img
+        class="logo"
+        src="/assets/shark_trust.png"
+        alt="Shark Trust"
+        onerror="this.remove()"
+      />
+      <div class="brand">
+        <span class="org">Shark Trust</span>
+        <h1>Egg Case Test</h1>
       </div>
-      <div class="under">
-        <button class="hbtn" id="back" type="button">← Back</button>
-        <span id="counter"></span>
-        <button class="hbtn" id="next" type="button">Next →</button>
-        <span class="grow"></span>
-        <label class="only"><input type="checkbox" id="only-unanswered"> <span>Unanswered only (<span id="left"></span>)</span></label>
-      </div>
-      <div class="note">
-        <label for="note">Notes <span>(optional, saved when you choose a species)</span></label>
-        <textarea id="note" rows="2" maxlength="1000"
-                  placeholder="What made you decide, or what made it hard to tell"></textarea>
-      </div>
-    </div>
-    <div class="panel">
-      <p class="ask">Which species laid this egg case?</p>
-      <p class="hint">These photos help us check and improve the Shark Trust's egg case
-        identifier. Name each one as best you can from the photo alone. Some are
-        deliberately tricky, and <b>Not sure</b> is a useful answer too. Skip any photo and
-        come back to it: your answers save as you go.</p>
-      <p class="keys">Keys: 1–9 to answer, 0 for Not sure, ← → to move.</p>
-      <div class="choices" id="choices"></div>
-      <div class="error" id="save-error"></div>
-    </div>
-  </section>
+      <div class="grow"></div>
+      <span id="progress"></span>
+      <button class="hbtn" id="signout" type="button" style="display: none">
+        Sign out
+      </button>
+      <button
+        class="hbtn"
+        id="theme"
+        type="button"
+        title="Switch theme"
+        aria-label="Switch theme"
+      >
+        ◐
+      </button>
+    </header>
 
-  <section id="done" class="center">
-    <div class="card">
-      <h2>All done — thank you</h2>
-      <p id="done-text"></p>
-      <button class="primary" id="review" type="button">Look back through my answers</button>
-    </div>
-  </section>
+    <main>
+      <section id="loading" class="center show">
+        <p class="hint">Loading…</p>
+      </section>
 
-  <section id="message" class="center">
-    <div class="card"><h2 id="message-title"></h2><p id="message-text"></p></div>
-  </section>
-</main>
+      <section id="login" class="center">
+        <form class="card" id="login-form">
+          <h2>Egg case test</h2>
+          <p>Log in with the details sent to you.</p>
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="username" required />
+          <label for="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+          <button class="primary" id="login-btn" type="submit">Log in</button>
+          <div class="error" id="login-error"></div>
+        </form>
+      </section>
 
-<script type="module" src="/js/test.js"></script>
-</body>
+      <section id="test">
+        <div class="stage">
+          <div class="frame" id="frame">
+            <img id="photo" alt="Egg case photograph" draggable="false" />
+            <span class="zoom-hint"
+              >Scroll or pinch to zoom · double-click to reset</span
+            >
+          </div>
+          <div class="under">
+            <button class="hbtn" id="back" type="button">← Back</button>
+            <span id="counter"></span>
+            <button class="hbtn" id="next" type="button">Next →</button>
+            <span class="grow"></span>
+            <label class="only"
+              ><input type="checkbox" id="only-unanswered" />
+              <span>Unanswered only (<span id="left"></span>)</span></label
+            >
+          </div>
+          <div class="note">
+            <label for="note"
+              >Notes
+              <span>(optional, saved when you choose a species)</span></label
+            >
+            <textarea
+              id="note"
+              rows="2"
+              maxlength="1000"
+              placeholder="What made you decide, or what made it hard to tell"
+            ></textarea>
+          </div>
+        </div>
+        <div class="panel">
+          <p class="ask">Which species laid this egg case?</p>
+          <p class="hint">
+            These photos help us check and improve the Shark Trust's egg case
+            identifier. Name each one as best you can from the photo alone. Some
+            are deliberately tricky, and <b>Not sure</b> is a useful answer too.
+            Skip any photo and come back to it: your answers save as you go.
+          </p>
+          <p class="keys">Keys: 1–9 to answer, 0 for Not sure, ← → to move.</p>
+          <div class="choices" id="choices"></div>
+          <div class="error" id="save-error"></div>
+        </div>
+      </section>
+
+      <section id="done" class="center">
+        <div class="card">
+          <h2>All done — thank you</h2>
+          <p id="done-text"></p>
+          <button class="primary" id="review" type="button">
+            Look back through my answers
+          </button>
+        </div>
+      </section>
+
+      <section id="message" class="center">
+        <div class="card">
+          <h2 id="message-title"></h2>
+          <p id="message-text"></p>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/js/test.js"></script>
+  </body>
 </html>
