@@ -5,6 +5,7 @@ import { listTestImages, signTestImages, signTestImage } from './services/testIm
 import { myAnswers, saveAnswer } from './services/testAnswers.js';
 import { SPECIES, NOT_SURE } from './species.js';
 import { seededShuffle } from './lib/seededShuffle.js';
+import { zoomable } from './ui/zoom.js';
 
 const $ = id => document.getElementById(id);
 const PRELOAD = 3;        // photos fetched ahead, so moving on is instant
@@ -19,8 +20,8 @@ const state = {
   shownAt: 0,            // when the current photo appeared
   saves: Promise.resolve(),   // saves run one at a time, in the order they were made
   unsaved: new Set(),    // image_paths whose last save failed
-  fillingGaps: false,    // sent back to unanswered photos after the last one
 };
+const zoom = zoomable($('frame'), $('photo'));
 
 /* ---------- screens ---------- */
 function show(id) {
@@ -88,9 +89,8 @@ function go(i) {
   state.current = Math.max(0, Math.min(i, order.length - 1));
   const path = order[state.current];
 
+  zoom.reset();
   $('photo').src = urls.get(path);
-  $('full').href = urls.get(path);
-  $('back').disabled = state.current === 0;
   $('counter').textContent = `Photo ${state.current + 1} of ${order.length}`;
   renderProgress();
   $('note').value = answers.get(path)?.note ?? '';
@@ -102,7 +102,30 @@ function go(i) {
 }
 
 function renderProgress() {
-  $('progress').textContent = `${state.answers.size} of ${state.order.length} answered`;
+  const { order, answers } = state;
+  $('progress').textContent = `${answers.size} of ${order.length} answered`;
+  $('left').textContent = order.length - answers.size;
+  $('back').disabled = neighbour(-1) === -1;
+  $('next').disabled = neighbour(+1) === -1;
+}
+
+// The next photo in direction dir (+1 or -1), or -1 if there is none. With
+// "Unanswered only" ticked, answered photos are passed over and the search wraps round.
+function neighbour(dir) {
+  const { order, answers, current } = state;
+  const n = order.length;
+  const only = $('only-unanswered').checked;
+  for (let k = 1; k < n; k++) {
+    const i = only ? ((current + dir * k) % n + n) % n : current + dir * k;
+    if (i < 0 || i >= n) return -1;
+    if (!only || !answers.has(order[i])) return i;
+  }
+  return -1;
+}
+
+function move(dir) {
+  const i = neighbour(dir);
+  if (i !== -1) go(i);
 }
 
 // A link that ran out mid-sitting is signed again once, then left to fail visibly.
@@ -131,7 +154,8 @@ function answer(species) {
     .then(() => saveAnswer(state.user.id, path, entry.species, entry.note))
     .then(() => saved(path), err => notSaved(path, entry, err));
 
-  if (state.current < order.length - 1 && !state.fillingGaps) go(state.current + 1);
+  const next = neighbour(+1);
+  if (next !== -1) go(next);
   else settle().catch(err => message('Something went wrong', err.message));
 }
 
@@ -151,14 +175,15 @@ function notSaved(path, entry, err) {
   renderProgress();
 }
 
-// After the last photo: wait for every save, then go to the next gap or finish.
+// After the last photo: wait for every save, then finish, or turn on "Unanswered only"
+// and go to the first photo that was skipped or didn't save.
 async function settle() {
   show('loading');
   await state.saves;
   const gap = state.order.findIndex(p => !state.answers.has(p));
-  state.fillingGaps = gap !== -1;
-  if (gap === -1) finish();
-  else go(gap);
+  if (gap === -1) return finish();
+  $('only-unanswered').checked = true;
+  go(gap);
 }
 
 function finish() {
@@ -199,8 +224,17 @@ function renderChoices() {
 }
 
 renderChoices();
-$('review').addEventListener('click', () => go(0));
-$('back').addEventListener('click', () => go(state.current - 1));
+$('review').addEventListener('click', () => {
+  $('only-unanswered').checked = false;
+  go(0);
+});
+$('back').addEventListener('click', () => move(-1));
+$('next').addEventListener('click', () => move(+1));
+// Ticking the filter on an answered photo moves straight to the next unanswered one.
+$('only-unanswered').addEventListener('change', e => {
+  if (e.target.checked && state.answers.has(state.order[state.current])) move(+1);
+  else renderProgress();
+});
 
 document.addEventListener('keydown', e => {
   if (!$('test').classList.contains('show') || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -211,6 +245,6 @@ document.addEventListener('keydown', e => {
   }
   if (e.key >= '1' && e.key <= '9') answer(SPECIES[Number(e.key) - 1].key);
   else if (e.key === '0') answer(NOT_SURE);
-  else if (e.key === 'ArrowLeft') go(state.current - 1);
-  else if (e.key === 'ArrowRight' && state.answers.has(state.order[state.current])) go(state.current + 1);
+  else if (e.key === 'ArrowLeft') move(-1);
+  else if (e.key === 'ArrowRight') move(+1);
 });

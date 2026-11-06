@@ -179,9 +179,10 @@ container that holds the Supabase secret and nothing else.
 
 `/test` — Shark Trust staff log in, then name the species in 150 photos, one at a
 time: nine buttons plus *Not sure*, keys `1`–`9` and `0`, and an optional note saved
-with the answer. Each tester gets their own fixed shuffle and can leave and come back.
-An answer moves straight on and saves in the background; a failed save leaves the
-photo unanswered and says so. Not linked from the site, and `noindex`.
+with the answer. Scroll or pinch zooms the photo. Each tester gets their own fixed
+shuffle, can skip photos (*Unanswered only* steps through the ones left) and can leave
+and come back. An answer moves straight on and saves in the background; a failed save
+leaves the photo unanswered and says so. Not linked from the site, and `noindex`.
 
 ```bash
 python scripts/pick_test_set.py > test_set.csv     # which photos, with true species

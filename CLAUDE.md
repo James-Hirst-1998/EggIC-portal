@@ -51,7 +51,8 @@ only when a real need arrives.
 - One service per table or bucket. A service returns plain data or throws (every
   result goes through `unwrap`); it never returns `{data, error}` and never touches
   the DOM.
-- Pages own the DOM and state. Pure helpers go in `public/js/lib/`.
+- Pages own the DOM and state. Pure helpers go in `public/js/lib/`; reusable DOM
+  behaviour a page wires up (photo zoom) goes in `public/js/ui/`.
 - Only the publishable key reaches the browser (`public/js/config.js`). The secret key
   lives in the `eggic-supabase` Modal secret and the gitignored `.env`, nowhere else.
 
