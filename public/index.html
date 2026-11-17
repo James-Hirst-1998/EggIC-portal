@@ -249,8 +249,8 @@
 
       <div class="facts">
         <div class="fact"><div class="big">9</div><div class="cap">species covered</div></div>
-        <div class="fact"><div class="big">13,054</div><div class="cap">photographs learned from</div></div>
-        <div class="fact"><div class="big">87.5%</div><div class="cap">confidence to accept a call</div></div>
+        <div class="fact"><div class="big">18,000</div><div class="cap">photographs learned from</div></div>
+        <div class="fact"><div class="big">95%</div><div class="cap">confidence to accept a call</div></div>
       </div>
 
       <p class="more"><a href="/about">How the model works, and when to trust it →</a></p>
@@ -681,13 +681,20 @@ function renderStrip() {
 // Both models always run and their answers are averaged — that pairing is what the
 // held-out evaluation favours. ?compare=1 exposes the individual arms for testing.
 const COMPARE = new URLSearchParams(location.search).has('compare');
-const ARMS = ['v1', 'dinov3'];
-
+// No arm names here: Modal runs every arm it loaded, so a model swap needs no page change.
 function modelChoice() {
-  return {models: ARMS, primary: 'ensemble'};
+  return {primary: 'ensemble'};
 }
 
-const MODEL_LABEL = {v1: 'v1 · DINOv2', dinov3: 'DINOv3', ensemble: 'Both, averaged'};
+const MODEL_LABEL = {s2_dinov2: 'DINOv2', s2_dinov3: 'DINOv3', ensemble: 'Both, averaged'};
+
+// The two answers that are not a species say what to do instead.
+const SPECIAL = {
+  NoEggCase: {lead: 'No egg case found',
+              note: 'Try a closer photograph of a single egg case.'},
+  RareSpecies: {lead: 'Possibly a rare species',
+                note: 'Send this photograph to the Shark Trust for an expert to check.'},
+};
 
 function compareHtml(d) {
   if (!COMPARE) return '';
@@ -748,14 +755,15 @@ function renderPanel() {
   const compare = compareHtml(d);
   const rest = d.ranked.slice(3);
   const fb = item.feedback;
+  const special = d.confident && SPECIAL[top.key];
 
   panel.innerHTML = `
     <div class="verdict ${d.confident ? 'confident' : ''}">
-      <div class="lead">${d.confident ? 'Identified' : 'Best guess only'}</div>
+      <div class="lead">${special ? special.lead : d.confident ? 'Identified' : 'Best guess only'}</div>
       <div class="name">${top.name}</div>
       <div class="latin">${top.latin}</div>
       <div class="note">${d.confident
-        ? `${pct}% confident.`
+        ? `${pct}% confident.${special ? ' ' + special.note : ''}`
         : `${pct}% confident — not enough to call it. Compare the alternatives below.`}
       </div>
     </div>
@@ -764,7 +772,7 @@ function renderPanel() {
 
     <h2>Most likely</h2>
     <div>${d.ranked.slice(0, 3).map((r, i) => rowHtml(r, i === 0)).join('')}</div>
-    <details><summary>Show the other ${rest.length} species</summary>
+    <details><summary>Show the other ${rest.length}</summary>
       <div>${rest.map(r => rowHtml(r, false)).join('')}</div>
     </details>
 

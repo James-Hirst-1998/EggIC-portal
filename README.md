@@ -87,37 +87,34 @@ are real.
 
 ## The model
 
-Two arms are loaded at once (`MODEL_VERSIONS`, default `v1,dinov3`) and the picker on
-the front page chooses between them or averages both. Four TTA views each (scales 1.0
-and 0.85, mirrored). Above **85%** confidence the interface names a species; below it,
-it presents the field.
+Two arms are loaded at once (`MODEL_VERSIONS`, default `s2_dinov2,s2_dinov3`) and their
+raw probabilities are averaged. Four TTA views each (scales 1.0 and 0.85, mirrored). Eleven
+classes: the nine species, `RareSpecies` (Starry, Blue, White Skate, Blackmouth Catshark,
+shown as "send to an expert") and `NoEggCase`. At or above `CONFIDENT_AT` (**0.95** on the
+shown scale) the interface names an answer; below it, it presents the field.
 
-| arm | backbone | answers with zero errors, of 224 held-out photos |
-|---|---|---|
-| `v1` | DINOv2 ViT-L/14 @448 | 40 (18%) |
-| `dinov3` | DINOv3 ViT-L/16 @448 | 97 (43%) |
-| both, averaged | — | **145 (65%)** |
+| arm | backbone | answered at 0.95, of 224 held-out photos | wrong |
+|---|---|---|---|
+| `s2_dinov2` | DINOv2 ViT-L/14 @448 | 207 | 3 |
+| `s2_dinov3` | DINOv3 ViT-L/16 @448 | 183 | 1 |
+| both, averaged | — | **190 (85%)** | **0** |
 
-"Zero errors" is the largest set of most-confident photos containing no wrong answer,
-measured on the 101 benchmark + 123 hand-verified field photos. The averaged arm is the
-one to serve. See `CLAUDE.md` for the goal those numbers are judged against, and
-`EggIC/CLAUDE_LOG.md` item T for the full result.
-
-⚠️ Label smoothing caps the model's confidence near 0.911, so the averaged arm reaches
-its zero-error point at **0.71**, not 0.90. The confidence *scale* is the thing to fix
-before the 0.90 threshold in `CONFIDENT_AT` means what it says.
+Measured 2026-11-17 on the 101 benchmark + 123 hand-verified field photos, none of them in
+training. The averaged arm's most confident mistake is 93.7%, so 0.95 is the lowest clean
+line; it was chosen on this same sample. See `CLAUDE.md` for the goal those numbers are
+judged against.
 
 ### Swapping the model
 
 ```bash
-modal volume put eggic-models final_ema.pt v2/final_ema.pt
+modal volume put eggic-models best.pt v2/best.pt
 modal volume put eggic-models calibration_T1.json v2/calibration_T1.json
-MODEL_VERSIONS=v1,dinov3,v2 modal deploy modal/app.py
+MODEL_VERSIONS=s2_dinov2,s2_dinov3,v2 modal deploy modal/app.py
 ```
 
-`final_ema.pt` is preferred over `best.pt` when a run wrote both. Until the DINOv3
-work merges to `EggIC`'s `main`, deploying also needs a source checkout new enough
-to build it — `EGGIC_SRC=../EggIC-modal-eval/eggic-fgvc/src modal deploy modal/app.py`.
+`final_ema.pt` is preferred over `best.pt` when a run wrote both. The model code comes
+from the sibling `EggIC/` checkout; when that lags `main`, point at a checkout of `main` —
+`EGGIC_SRC=../EggIC-<branch>/eggic-fgvc/src modal deploy modal/app.py`.
 The deploy fails loudly rather than serving a checkout that cannot build DINOv3.
 
 Old versions stay on the volume, so rollback is one redeploy. Every stored

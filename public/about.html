@@ -124,17 +124,19 @@
 
   <div class="stats">
     <div class="stat"><div class="big">9</div><div class="cap">species covered</div></div>
-    <div class="stat"><div class="big">13,054</div><div class="cap">photographs learned from</div></div>
-    <div class="stat"><div class="big">87.5%</div><div class="cap">confidence to accept a call</div></div>
-    <div class="stat"><div class="big">133 / 224</div><div class="cap">held-out photographs answered, none of them wrong</div></div>
+    <div class="stat"><div class="big">18,000</div><div class="cap">photographs learned from</div></div>
+    <div class="stat"><div class="big">95%</div><div class="cap">confidence to accept a call</div></div>
+    <div class="stat"><div class="big">190 / 224</div><div class="cap">held-out photographs answered, none of them wrong</div></div>
   </div>
 
   <section>
     <h2>What it covers</h2>
     <p>
       The model recognises nine species. These are the egg cases most often recorded on British
-      and Irish beaches, but they are not the complete list — the Great Egg Case Hunt records
-      others besides.
+      and Irish beaches, but they are not the complete list. It also knows two answers that are
+      not one of the nine: <em>rare species</em>, for the Starry, Blue and White Skate and the
+      Blackmouth Catshark, which it flags for an expert rather than naming, and <em>not an egg
+      case</em>.
     </p>
     <div class="species">
       <div><div class="name">Blonde Ray</div><div class="latin">Raja brachyura</div></div>
@@ -152,7 +154,7 @@
   <section>
     <h2>How it reaches an answer</h2>
     <figure>
-      <svg viewBox="0 0 1000 190" role="img" aria-label="Photograph, padded to square, examined by the vision model, compared with nine species, confidence for each">
+      <svg viewBox="0 0 1000 190" role="img" aria-label="Photograph, padded to square, examined by the vision model, compared with nine species and two other answers, confidence for each">
         <defs>
           <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
                   markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -183,13 +185,13 @@
           <!-- 4 -->
           <rect x="624" y="34" width="168" height="104" rx="12" fill="var(--panel)" stroke="var(--line)"/>
           <text x="708" y="76" text-anchor="middle" font-size="15" font-weight="600" fill="var(--fg)">Weighed against</text>
-          <text x="708" y="98" text-anchor="middle" font-size="12" fill="var(--dim)">all nine species</text>
+          <text x="708" y="98" text-anchor="middle" font-size="12" fill="var(--dim)">all eleven answers</text>
           <text x="708" y="114" text-anchor="middle" font-size="12" fill="var(--dim)">at once</text>
 
           <!-- 5 -->
           <rect x="832" y="34" width="168" height="104" rx="12" fill="var(--panel)" stroke="var(--line)"/>
           <text x="916" y="76" text-anchor="middle" font-size="15" font-weight="600" fill="var(--fg)">A confidence</text>
-          <text x="916" y="98" text-anchor="middle" font-size="12" fill="var(--dim)">for every species,</text>
+          <text x="916" y="98" text-anchor="middle" font-size="12" fill="var(--dim)">for every answer,</text>
           <text x="916" y="114" text-anchor="middle" font-size="12" fill="var(--dim)">adding up to 100%</text>
 
           <g stroke="var(--dim)" stroke-width="1.5" marker-end="url(#arrow)">
@@ -211,11 +213,11 @@
 
     <h3>What it learned from</h3>
     <p>
-      13,054 photographs of egg cases, wet and dry, whole and broken. The model was not told
-      what a keel or a horn is; it was shown many examples of each species and worked out for
-      itself which differences matter. The nine species are unevenly represented, from 462
-      Cuckoo Ray photographs to 1,911 Blonde Ray, and the training corrects for that imbalance
-      so the rarer species are not simply ignored.
+      About 18,000 photographs of egg cases, wet and dry, whole and broken: 13,054 from a
+      reference collection and about 5,000 sent in by the public to the Shark Trust. The model
+      was not told what a keel or a horn is; it was shown many examples of each species and
+      worked out for itself which differences matter. The species are unevenly represented,
+      and the training corrects for that imbalance so the rarer ones are not simply ignored.
     </p>
   </section>
 
@@ -223,16 +225,16 @@
     <h2>Reading the result</h2>
     <p>
       Every answer comes with a confidence: the model's own estimate of how likely its
-      first choice is to be right. The confidences across all nine species always add up
+      first choice is to be right. The confidences across all its answers always add up
       to 100%, so a high number for one species necessarily means low numbers elsewhere.
     </p>
 
     <div class="callout">
-      <strong>Accept a call at 87.5% or above.</strong>
+      <strong>Accept a call at 95% or above.</strong>
       Below that, treat it as a shortlist, not an identification.
     </div>
 
-    <h3>Why 87.5%</h3>
+    <h3>Why 95%</h3>
     <p class="tight">
       Measured on 224 photographs the model had never seen during training — 101 reference
       photographs and 123 sent in from beaches:
@@ -242,33 +244,31 @@
         <tr><th>Confidence in the top species</th><th class="num">Share of photographs</th><th class="num">Correct</th></tr>
       </thead>
       <tbody>
-        <tr class="rule"><td>87.5% and above — accepted</td><td class="num">59%</td><td class="num">100%</td></tr>
-        <tr><td>80% and above</td><td class="num">67%</td><td class="num">99%</td></tr>
-        <tr><td>70% and above</td><td class="num">73%</td><td class="num">98%</td></tr>
-        <tr><td>Every photograph, whatever the confidence</td><td class="num">100%</td><td class="num">87%</td></tr>
+        <tr class="rule"><td>95% and above — accepted</td><td class="num">85%</td><td class="num">100%</td></tr>
+        <tr><td>90% and above</td><td class="num">92%</td><td class="num">99.5%</td></tr>
+        <tr><td>80% and above</td><td class="num">96%</td><td class="num">99%</td></tr>
+        <tr><td>Every photograph, whatever the confidence</td><td class="num">100%</td><td class="num">97%</td></tr>
       </tbody>
     </table>
     <p>
       Confidence is doing real work here: the more certain the model says it is, the more
-      often it is right. 87.5% sits just clear of the first mistake: the most confident wrong
-      answer in those 224 photographs came in at 83.5%, four points below the line. Everything
-      the tool accepted, it got right — 133 photographs, three in every five.
+      often it is right. 95% sits just clear of the first mistake: the most confident wrong
+      answer in those 224 photographs came in at 93.7%. Everything the tool accepted, it got
+      right — 190 photographs, about five in every six.
     </p>
     <p>
-      The mistakes it did make are mostly of a mild kind. Of the 29 wrong answers, 28 were one
-      <em>Raja</em> taken for another, most often a Thornback called a Blonde. Only one crossed
-      genus, and that came in at 50% confidence, nowhere near the line.
+      The mistakes it did make are of a mild kind. Of the 7 wrong answers, 4 were one
+      <em>Raja</em> taken for another and 3 were the two catsharks taken for each other. None
+      crossed genus.
     </p>
 
     <h3>When it is unsure</h3>
     <ul>
       <li>
-        <strong>An egg case outside the nine species.</strong> The model has no way to answer
-        "none of these", so it will still name one of the nine. Usually the confidence drops
-        and the remaining probability spreads across several species — but not always. Of 19
-        photographs of untaught species we tested, 5 still cleared 87.5% under the wrong name.
-        This is the tool's weakest point, and the confidence number will not warn you about it.
-        If you have reason to think the case is something else, trust that over the number.
+        <strong>A rare species.</strong> Of 19 photographs of the four rare species, the model
+        flagged 9 as rare and named one of the nine for the other 10, but never above 95%. A rare
+        case is the tool's weakest point: if you have reason to think the case is something else,
+        trust that over the number.
       </li>
       <li>
         <strong>More than one egg case in the frame.</strong> The model answers for the
@@ -297,9 +297,9 @@
         the percentages should be read as indicative rather than precise.
       </li>
       <li>
-        The 87.5% line was chosen using those same 224 photographs, so "none of them wrong" is
+        The 95% line was chosen using those same 224 photographs, so "none of them wrong" is
         the best case rather than a promise. On photographs we have not seen, the honest reading
-        is <em>at least 97% right above the line</em>.
+        is <em>at least 98% right above the line</em>.
       </li>
       <li>
         Those photographs were supplied separately and were never used in training, so the
@@ -312,8 +312,8 @@
         and location alone would rule out some species immediately.
       </li>
       <li>
-        It cannot say "this is not an egg case". Photograph anything else and it will still
-        return nine numbers.
+        It learned "not an egg case" from everyday objects, not beach photographs, so seaweed,
+        shells or whelk eggs may still be named as a species.
       </li>
     </ul>
   </section>

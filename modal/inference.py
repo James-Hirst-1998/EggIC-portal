@@ -38,6 +38,8 @@ SPECIES_INFO: Dict[str, Tuple[str, str]] = {
     "SpottedRay": ("Spotted Ray", "Raja montagui"),
     "ThornbackRay": ("Thornback Ray", "Raja clavata"),
     "UndulateRay": ("Undulate Ray", "Raja undulata"),
+    "NoEggCase": ("Not an egg case", "No egg case in the photo"),
+    "RareSpecies": ("Rare species", "Starry, Blue or White Skate, or Blackmouth Catshark"),
 }
 
 
