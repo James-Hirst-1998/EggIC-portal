@@ -35,8 +35,8 @@ HERE = Path(__file__).resolve().parent
 # Comma-separated: every one is loaded into the same container, and a request
 # picks which to run. Two ViT-L at fp16 fit a T4 with room to spare.
 MODEL_VERSIONS = [v.strip() for v in
-                  os.environ.get("MODEL_VERSIONS", "v1,dinov3").split(",") if v.strip()]
-CONFIDENT_AT = 0.875  # 4 points clear of the worst mistake seen on the held-out photos
+                  os.environ.get("MODEL_VERSIONS", "s2_dinov2,s2_dinov3").split(",") if v.strip()]
+CONFIDENT_AT = 0.95  # clear of the worst mistake seen on the held-out photos (93.7%)
 
 app = modal.App("eggic")
 
@@ -108,7 +108,9 @@ def _supabase(method: str, path: str, **kwargs):
 
 @app.cls(
     image=image,
-    gpu="L4",   # fp32 ViT-L x2; the T4 was only viable at fp16, which DINOv3 cannot use
+    # fp32 ViT-L x2; the T4 was only viable at fp16, which DINOv3 cannot use. A10G is the
+    # fallback: on 2026-11-17 an L4 took 27 minutes to schedule.
+    gpu=["L4", "A10G"],
     volumes={"/models": models},
     secrets=[api_key, supabase],
     # Idle GPU time is the main cost here, not the inference. 60s covers the gaps
