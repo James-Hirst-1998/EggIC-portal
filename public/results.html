@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shark Trust — Egg Case Test Results</title>
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#08807f" />
+    <link rel="icon" href="/assets/shark_trust.png" />
+    <script src="/analytics.js"></script>
+    <style>
+      /* Same palette as the test page; the toggle stamps data-theme="dark" on <html>. */
+      :root {
+        --bg: #ffffff;
+        --panel: #f5f7f7;
+        --fg: #101d1c;
+        --dim: #5c6b69;
+        --line: #e2e7e6;
+        --accent: #08807f;
+        --accent-soft: #e8f3f2;
+        --bad: #a8342a;
+        --bad-soft: #f8eae8;
+        --plate: #ffffff;
+        --ring: rgba(8, 128, 127, 0.35);
+        --accent-solid: #08807f;
+      }
+      :root[data-theme="dark"] {
+        --bg: #0d1312;
+        --panel: #151c1b;
+        --fg: #e7ecea;
+        --dim: #94a3a1;
+        --line: #242f2d;
+        --accent: #54bcb9;
+        --accent-soft: #112b2a;
+        --bad: #e08b83;
+        --bad-soft: #2b1715;
+        --plate: #ffffff;
+        --ring: rgba(84, 188, 185, 0.4);
+        --accent-solid: #0d6f6d;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          15px/1.5 ui-sans-serif,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      button,
+      input {
+        font-family: inherit;
+      }
+      a {
+        color: var(--accent);
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        padding: 10px 22px;
+        border-bottom: 1px solid var(--line);
+      }
+      header .logo {
+        height: 44px;
+        width: auto;
+        background: var(--plate);
+        border-radius: 5px;
+        padding: 3px;
+        flex: none;
+      }
+      .brand {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.25;
+      }
+      .brand .org {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      .brand h1 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0;
+      }
+      header .grow {
+        flex: 1;
+      }
+      .hbtn {
+        flex: none;
+        background: none;
+        border: 1px solid var(--line);
+        color: var(--dim);
+        border-radius: 8px;
+        height: 32px;
+        padding: 0 12px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .hbtn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      #theme {
+        width: 32px;
+        padding: 0;
+        font-size: 14px;
+      }
+
+      main {
+        padding: 18px 22px 48px;
+      }
+      main > section {
+        display: none;
+      }
+      main > section.show {
+        display: block;
+      }
+
+      /* ---------- login / messages ---------- */
+      .center {
+        min-height: 70vh;
+      }
+      .center.show {
+        display: grid;
+        place-items: center;
+      }
+      .card {
+        width: min(380px, 100%);
+      }
+      .card h2 {
+        font-size: 21px;
+        font-weight: 600;
+        margin: 0 0 6px;
+        letter-spacing: -0.01em;
+      }
+      .card p {
+        color: var(--dim);
+        font-size: 14px;
+        margin: 0 0 20px;
+      }
+      .card label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        margin: 0 0 5px;
+      }
+      .card input {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 9px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--fg);
+        font-size: 15px;
+        margin-bottom: 14px;
+      }
+      .card input:focus {
+        outline: 2px solid var(--ring);
+        border-color: var(--accent);
+      }
+      .primary {
+        width: 100%;
+        padding: 11px;
+        border-radius: 9px;
+        border: none;
+        cursor: pointer;
+        background: var(--accent-solid);
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .primary:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      .error {
+        color: var(--bad);
+        font-size: 13.5px;
+        min-height: 20px;
+        margin-top: 10px;
+      }
+
+      /* ---------- the results ---------- */
+      #results {
+        max-width: 980px;
+        margin: 0 auto;
+      }
+      #results h2 {
+        font-size: 22px;
+        font-weight: 600;
+        margin: 8px 0 4px;
+        letter-spacing: -0.01em;
+      }
+      #results h3 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 34px 0 4px;
+      }
+      .lede {
+        color: var(--dim);
+        margin: 0 0 18px;
+        max-width: 64ch;
+      }
+      .notice {
+        background: var(--accent-soft);
+        border-radius: 10px;
+        padding: 10px 14px;
+        margin: 0 0 18px;
+        font-size: 14px;
+      }
+      .tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+      }
+      .tile {
+        background: var(--panel);
+        border-radius: 12px;
+        padding: 14px 16px;
+      }
+      .tile .k {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--dim);
+      }
+      .tile .v {
+        font-size: 30px;
+        font-weight: 650;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em;
+        margin: 2px 0;
+      }
+      .tile .s {
+        font-size: 13px;
+        color: var(--dim);
+      }
+      .scroll {
+        overflow-x: auto;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--line);
+        white-space: nowrap;
+      }
+      th {
+        font-size: 12.5px;
+        color: var(--dim);
+        font-weight: 600;
+      }
+      td.n,
+      th.n {
+        text-align: right;
+      }
+      td.low {
+        color: var(--bad);
+        font-weight: 600;
+      }
+      .examples {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+        margin-top: 12px;
+      }
+      .ex {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .ex img {
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        background: var(--panel);
+        display: block;
+        cursor: zoom-in;
+      }
+      .ex .body {
+        padding: 12px 14px 14px;
+        font-size: 14px;
+      }
+      .ex .tag {
+        font-size: 11.5px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      .ex dl {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 2px 10px;
+        margin: 8px 0;
+      }
+      .ex dt {
+        color: var(--dim);
+      }
+      .ex dd {
+        margin: 0;
+      }
+      .ex p {
+        margin: 0;
+        color: var(--dim);
+      }
+      .small {
+        font-size: 13px;
+        color: var(--dim);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img
+        class="logo"
+        src="/assets/shark_trust.png"
+        alt="Shark Trust"
+        onerror="this.remove()"
+      />
+      <div class="brand">
+        <span class="org">Shark Trust</span>
+        <h1>Egg Case Test Results</h1>
+      </div>
+      <div class="grow"></div>
+      <button class="hbtn" id="signout" type="button" style="display: none">
+        Sign out
+      </button>
+      <button
+        class="hbtn"
+        id="theme"
+        type="button"
+        title="Switch theme"
+        aria-label="Switch theme"
+      >
+        ◐
+      </button>
+    </header>
+
+    <main>
+      <section id="loading" class="center show">
+        <p class="small">Loading…</p>
+      </section>
+
+      <section id="login" class="center">
+        <form class="card" id="login-form">
+          <h2>Egg case test results</h2>
+          <p>Log in with the details you used for the test.</p>
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="username" required />
+          <label for="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+          <button class="primary" id="login-btn" type="submit">Log in</button>
+          <div class="error" id="login-error"></div>
+        </form>
+      </section>
+
+      <section id="results">
+        <h2>How people and the identifier did</h2>
+        <p class="lede" id="lede"></p>
+        <p class="notice" id="unfinished" hidden>
+          You have not finished the test yet. The results below name the species
+          in some of its photos, so you may want to
+          <a href="/test">finish it first</a>.
+        </p>
+
+        <div class="tiles" id="tiles"></div>
+
+        <h3>The identifier's confidence line</h3>
+        <p class="lede">
+          The identifier only names a species when it is at least this confident,
+          and says "not sure" otherwise. A higher line means fewer answers, but
+          safer ones.
+        </p>
+        <div class="scroll">
+          <table id="lines"></table>
+        </div>
+
+        <h3>By species</h3>
+        <p class="lede">
+          Sorted with the species people found hardest first. The identifier's
+          column is its best guess on every photo, with no confidence line.
+        </p>
+        <div class="scroll">
+          <table id="species"></table>
+        </div>
+        <p class="small" id="mixups"></p>
+
+        <h3>Photos where people and the identifier differed</h3>
+        <p class="lede">
+          A few photos where one side found it hard and the other did not. Tap a
+          photo to open it full size.
+        </p>
+        <div class="examples" id="examples"></div>
+      </section>
+
+      <section id="message" class="center">
+        <div class="card">
+          <h2 id="message-title"></h2>
+          <p id="message-text"></p>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/js/results.js"></script>
+  </body>
+</html>
