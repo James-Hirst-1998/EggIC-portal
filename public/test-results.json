@@ -163,7 +163,22 @@
     "confidence": 0.587
    },
    "tag": "The identifier found this hard",
-   "text": "Everyone named it. The identifier's best guess was Blonde Ray, well below its line, so it would answer \"not sure\"."
+   "text": "Everyone named it. The identifier leaned to Blonde Ray at under 60%, so it would answer \"not sure\"."
+  },
+  {
+   "image_path": "0c1868e76d8b.jpg",
+   "true": "UndulateRay",
+   "people": [
+    "UndulateRay",
+    "UndulateRay",
+    "UndulateRay"
+   ],
+   "model": {
+    "top": "SpottedRay",
+    "confidence": 0.462
+   },
+   "tag": "The identifier found this hard",
+   "text": "Everyone named it. The identifier leaned to Spotted Ray at under 50%, so it would answer \"not sure\"."
   },
   {
    "image_path": "8f8e21ab2077.jpg",
@@ -178,22 +193,7 @@
     "confidence": 0.894
    },
    "tag": "A close call for the identifier",
-   "text": "Everyone named it. The identifier's guess was wrong but fairly confident, just under a 90% line, so it would still answer \"not sure\"."
-  },
-  {
-   "image_path": "c708ea9d632a.jpg",
-   "true": "ThornbackRay",
-   "people": [
-    "SpottedRay",
-    "UndulateRay",
-    "UndulateRay"
-   ],
-   "model": {
-    "top": "SpottedRay",
-    "confidence": 0.485
-   },
-   "tag": "Hard for everyone",
-   "text": "Nobody, person or identifier, matched the agreed answer here. The identifier was below 50%."
+   "text": "Everyone named it. The identifier's guess was wrong but fairly confident, just under 90%, so it would still answer \"not sure\"."
   }
  ]
 }

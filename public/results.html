@@ -323,6 +323,24 @@
         margin: 0;
         color: var(--dim);
       }
+      dialog#zoom {
+        padding: 0;
+        border: 0;
+        border-radius: 12px;
+        background: transparent;
+        max-width: 94vw;
+        max-height: 94vh;
+        cursor: zoom-out;
+      }
+      dialog#zoom::backdrop {
+        background: rgba(0, 0, 0, 0.8);
+      }
+      dialog#zoom img {
+        display: block;
+        max-width: 94vw;
+        max-height: 94vh;
+        object-fit: contain;
+      }
       .small {
         font-size: 13px;
         color: var(--dim);
@@ -390,20 +408,10 @@
 
         <div class="tiles" id="tiles"></div>
 
-        <h3>The identifier's confidence line</h3>
-        <p class="lede">
-          The identifier only names a species when it is at least this confident,
-          and says "not sure" otherwise. A higher line means fewer answers, but
-          safer ones.
-        </p>
-        <div class="scroll">
-          <table id="lines"></table>
-        </div>
-
         <h3>By species</h3>
         <p class="lede">
           Sorted with the species people found hardest first. The identifier's
-          column is its best guess on every photo, with no confidence line.
+          column is its best guess on every photo.
         </p>
         <div class="scroll">
           <table id="species"></table>
@@ -413,9 +421,10 @@
         <h3>Photos where people and the identifier differed</h3>
         <p class="lede">
           A few photos where one side found it hard and the other did not. Tap a
-          photo to open it full size.
+          photo to see it larger.
         </p>
         <div class="examples" id="examples"></div>
+        <dialog id="zoom"><img id="zoom-img" alt="" /></dialog>
       </section>
 
       <section id="message" class="center">
