@@ -159,6 +159,21 @@
   details summary::before { content: "▸ "; }
   details[open] summary::before { content: "▾ "; }
 
+  /* ---------- several egg cases in one photo ---------- */
+  .cases { margin-bottom: 18px; }
+  .case { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center;
+          padding: 9px 0; border-top: 1px solid var(--line); }
+  .case:first-of-type { border-top: none; }
+  .case img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px;
+              background: var(--panel); }
+  .case .num { display: inline-grid; place-items: center; width: 20px; height: 20px;
+               border-radius: 50%; background: var(--accent-solid); color: #fff;
+               font-size: 11.5px; font-weight: 700; margin-right: 6px; }
+  .case .label { font-size: 14.5px; font-weight: 600; }
+  .case .sub { font-size: 12.5px; color: var(--dim); }
+  .case .pct { font-variant-numeric: tabular-nums; font-size: 14px; color: var(--dim); }
+  .case.confident .pct { color: var(--accent); font-weight: 650; }
+
   .feedback { margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--line); }
   .fb-buttons { display: flex; gap: 8px; }
   .fb-buttons button { flex: 1; padding: 9px 12px; border-radius: 9px; font-size: 13.5px;
@@ -615,7 +630,7 @@ async function runBatch() {
         position: i + 1, batch_size: items.length, heic: isHeic(item.file),
       });
     }
-    updateProgress(); renderStrip(); if (i === current) renderPanel();
+    updateProgress(); renderStrip(); if (i === current) { showPhoto(); renderPanel(); }
   }
   updateProgress();
   track('batch_completed', {size: items.length, succeeded: ok, failed,
@@ -642,7 +657,8 @@ function renderAll() { showPhoto(); renderStrip(); renderPanel(); }
 
 function showPhoto() {
   const item = items[current];
-  $('preview').src = item.dataUrl || '';
+  // A photo split into egg cases shows them outlined and numbered, as the panel lists them.
+  $('preview').src = item.result?.segments?.overlay || item.dataUrl || '';
   $('preview').alt = item.name;
   $('fname').textContent = item.name;
   $('of').textContent = items.length > 1 ? `${current + 1} of ${items.length}` : '';
@@ -738,7 +754,7 @@ function renderPanel() {
     const wakeNote = (!firstDone && item.state === 'running')
       ? `<div class="wake-note">
            <strong>The first photograph in a batch can take up to a minute</strong>
-           while the model wakes up. Every photograph after it comes back in about a second.
+           while the model wakes up. Every photograph after it comes back in a few seconds.
            <span class="wake-fine">This demo runs on hardware that sleeps when nobody is
            using it, to keep costs down. Deployed in-house, the wait disappears entirely.</span>
          </div>`
@@ -806,6 +822,8 @@ function renderPanel() {
       <div class="fb-hint" id="fb-hint"></div>
     </div>`;
 
+  if (d.segments?.cases) panel.prepend(casesBlock(d.segments.cases));
+
   panel.querySelectorAll('.fb-buttons button').forEach(b =>
     b.addEventListener('click', () => mark(b.dataset.correct === 'yes')));
   const alts = panel.querySelector('details');
@@ -839,6 +857,30 @@ function renderPanel() {
 
 /* The select holds a key; "something else" holds whatever was typed. One reader for
    both, so the tracking, the strip and what reaches the volume cannot disagree. */
+/* Each egg case the segmenter found, named on its own. Built with createElement: the
+   names and pictures come from the model's reply. */
+function casesBlock(cases) {
+  const el = (tag, cls, text) => Object.assign(document.createElement(tag),
+    cls ? {className: cls} : {}, text != null ? {textContent: text} : {});
+  const wrap = el('div', 'cases');
+  wrap.append(el('h2', null, `${cases.length} egg cases in this photo`));
+  for (const c of cases) {
+    const special = c.confident && SPECIAL[c.top];
+    const row = el('div', c.confident ? 'case confident' : 'case');
+    const img = el('img');
+    img.src = c.crop;
+    img.alt = `Egg case ${c.n}`;
+    const label = el('div', 'label');
+    label.append(el('span', 'num', String(c.n)), special ? special.lead : c.top_name);
+    const text = el('div');
+    text.append(label, el('div', 'sub', c.confident ? 'Identified' : 'Best guess only'));
+    row.append(img, text, el('div', 'pct', `${Math.round(c.confidence * 100)}%`));
+    wrap.append(row);
+  }
+  wrap.append(el('h2', null, 'The photo as a whole'));
+  return wrap;
+}
+
 function correctionValue(fb) {
   return fb.label === OTHER_KEY ? fb.otherText : fb.label;
 }
