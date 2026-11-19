@@ -1,15 +1,16 @@
 // Test results page: the same logins as the test, showing fixed totals from
-// /test-results.json (the three full testers and the live identifier, 2026-11-19)
+// /test-results.json (the three full testers and the live AI model, 2026-11-19)
 // and a few photos, signed like the test's own.
 import { signIn, signOut, onUserChange } from './services/auth.js';
 import { listTestImages, signTestImages } from './services/testImages.js';
-import { myAnswers } from './services/testAnswers.js';
 import { SPECIES } from './species.js';
 
 const $ = id => document.getElementById(id);
 const track = (name, props) => window.track?.(name, props);
 const NAME = Object.fromEntries(SPECIES.map(s => [s.key, s.name]));
 const pct = (n, d) => `${Math.round((100 * n) / d)}%`;
+const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six'];
+const LIVE = 95;   // CONFIDENT_AT in modal/app.py, as a percentage
 
 function show(id) {
   for (const s of document.querySelectorAll('main > section')) s.classList.toggle('show', s.id === id);
@@ -67,38 +68,43 @@ async function start() {
   show('loading');
   const res = await fetch('/test-results.json');
   if (!res.ok) throw new Error(`Could not load the results (HTTP ${res.status}).`);
-  const [data, names, answers] = await Promise.all([res.json(), listTestImages(), myAnswers()]);
+  const [data, names] = await Promise.all([res.json(), listTestImages()]);
   if (!names.length) {
     return message('No results for this login', 'Ask James to check your account is set up for the test.');
   }
   const urls = await signTestImages(data.examples.map(x => x.image_path));
   render(data, urls);
-  $('unfinished').hidden = answers.size >= names.length;
-  track('results_viewed', { answered: answers.size, total: names.length });
+  track('results_viewed', { total: names.length });
   show('results');
 }
 
 function render(d, urls) {
   const p = d.people;
   $('lede').textContent =
-    `${d.photos} photos of egg cases, each named by ${p.count} people and by the identifier. ` +
-    'Every photo has one agreed answer, and both are scored against it.';
+    `${WORDS[p.count] ?? p.count} Shark Trust staff each looked at the same ${d.photos} egg case photos and ` +
+    `named the species. The AI model was given the same ${d.photos}. Every photo has a known ` +
+    'answer, and both were marked against it.';
 
-  $('tiles').replaceChildren(
+  $('headline').replaceChildren(
     tile('People', `${pct(p.right, p.answers)} right`,
       `${p.right} of ${p.answers} answers. Each person got between ${p.min} and ${p.max} of ${d.photos}.`),
-    tile('Identifier, best guess', `${pct(d.model.right, d.photos)} right`,
-      `${d.model.right} of ${d.photos}, naming a species for every photo.`),
-    ...d.lines.map(l => tile(`Identifier, ${Math.round(l.at * 100)}% sure or more`,
-      `${pct(l.right, l.answered)} right`,
-      `Named ${l.answered} of ${d.photos} photos (${pct(l.answered, d.photos)}) and got ${l.right} right. ` +
-      `"Not sure" on the other ${d.photos - l.answered}.`)),
+    tile('AI model', `${pct(d.model.right, d.photos)} right`,
+      `${d.model.right} of ${d.photos}, giving its best guess on every photo.`),
   );
+
+  $('limits').replaceChildren(...d.lines.map(l => {
+    const at = Math.round(l.at * 100);
+    return tile(`Confidence limit ${at}%${at === LIVE ? ', as on the live identifier' : ''}`,
+      `${pct(l.right, l.answered)} right`,
+      `Names ${l.answered} of ${d.photos} photos (${pct(l.answered, d.photos)}) and gets ` +
+      `${l.right === l.answered ? 'every one' : `${l.right} of them`} right. ` +
+      `Says "not sure" on the other ${d.photos - l.answered}.`);
+  }));
 
   const rate = s => s.people_right / s.people_answers;
   const species = [...d.species].sort((a, b) => rate(a) - rate(b));
   $('species').replaceChildren(
-    row('th', ['Species', 'Photos', 'People right', 'Identifier right']),
+    row('th', ['Species', 'Photos', 'People right', 'AI model right']),
     ...species.map(s => {
       const tr = row('td', [NAME[s.key], s.photos,
         `${pct(s.people_right, s.people_answers)} (${s.people_right} of ${s.people_answers})`,
@@ -144,6 +150,6 @@ function example(x, url) {
       el('dl', {},
         el('dt', { textContent: 'Answer' }), el('dd', { textContent: NAME[x.true] }),
         el('dt', { textContent: 'People' }), el('dd', { textContent: said }),
-        el('dt', { textContent: 'Identifier' }), el('dd', { textContent: call })),
+        el('dt', { textContent: 'AI model' }), el('dd', { textContent: call })),
       el('p', { textContent: x.text })));
 }

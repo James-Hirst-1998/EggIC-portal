@@ -11,13 +11,14 @@ served model is a volume put plus an env change — no rebuild:
 The model *definition* is imported from the sibling EggIC checkout, so the served
 network cannot drift from the weights that produced it.
 
-Every photo is segmented first (EggIC ``multispecies/segment.py``, SAM + keep head).
-Two or more egg cases found cleanly → each is cropped and named on its own as well;
-otherwise the whole photo is named, as before.
+Every photo is segmented first (EggIC ``multispecies/segment.py``, SAM + keep head),
+and the reply is always the same shape: a list of egg cases, each with its outline,
+its answer and every class's score (README, "What the API returns"). Two or more found
+cleanly → each is cropped and named on its own; otherwise the whole photo is named.
 
-Submissions are written to Supabase (photo to the ``submissions`` bucket, a row
-to the ``submissions`` table) only when the caller asks for it. The schema is
-``supabase/migrations/``.
+Submissions are written to Supabase (photo and masks to the ``submissions`` bucket,
+a row to ``submissions`` and one per egg case to ``cases``) only when the caller asks
+for it. The schema is ``supabase/migrations/``.
 """
 
 from __future__ import annotations
@@ -111,6 +112,9 @@ api_key = modal.Secret.from_name("eggic-api-key")
 supabase = modal.Secret.from_name("eggic-supabase")
 
 SUBMISSION_ID = re.compile(r"\d{8}T\d{6}-[0-9a-f]{8}")
+# What each egg case in the reply carries, in this order.
+CASE_FIELDS = ("n", "box", "outline", "mask_path", "top", "top_name", "confidence",
+               "confident", "ranked", "by_model")
 
 
 def _supabase(method: str, path: str, **kwargs):
@@ -125,39 +129,29 @@ def _supabase(method: str, path: str, **kwargs):
     return resp
 
 
-def _data_url(img, side: int) -> str:
-    """An RGB array as a JPEG data URL, at most ``side`` on its long edge."""
-    import cv2
-
-    scale = min(1.0, side / max(img.shape[:2]))
-    if scale < 1:
-        img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
-    ok, buf = cv2.imencode(".jpg", cv2.cvtColor(img, cv2.COLOR_RGB2BGR),
-                           [cv2.IMWRITE_JPEG_QUALITY, 85])
-    if not ok:
-        raise RuntimeError("could not encode a JPEG")
-    return "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode()
-
-
-def _outline(img, masks):
-    """The photo with each case outlined and numbered, in the order of ``masks``."""
+def _outline(mask) -> list:
+    """A mask's edge as polygons, each ``[[x, y], ...]`` in fractions of the photo."""
     import cv2
     import numpy as np
 
-    out = img.copy()
-    t = max(2, round(max(img.shape[:2]) / 400))
-    for i, m in enumerate(masks):
-        contours, _ = cv2.findContours(m.astype(np.uint8), cv2.RETR_EXTERNAL,
-                                       cv2.CHAIN_APPROX_SIMPLE)
-        cv2.drawContours(out, contours, -1, (255, 214, 0), t, cv2.LINE_AA)
-        ys, xs = np.nonzero(m)
-        x, y, r = int(xs.mean()), int(ys.mean()), 7 * t
-        cv2.circle(out, (x, y), r, (8, 128, 127), -1, cv2.LINE_AA)
-        label = str(i + 1)
-        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, t / 2.5, t)
-        cv2.putText(out, label, (x - tw // 2, y + th // 2), cv2.FONT_HERSHEY_SIMPLEX,
-                    t / 2.5, (255, 255, 255), t, cv2.LINE_AA)
-    return out
+    h, w = mask.shape
+    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL,
+                                   cv2.CHAIN_APPROX_SIMPLE)
+    biggest = max((cv2.contourArea(c) for c in contours), default=0)
+    return [[[round(x / w, 4), round(y / h, 4)] for x, y in
+             cv2.approxPolyDP(c, 0.002 * cv2.arcLength(c, True), True).reshape(-1, 2).tolist()]
+            for c in contours if cv2.contourArea(c) >= 0.05 * biggest]
+
+
+def _png(mask) -> bytes:
+    """A mask as a black-and-white PNG the size of the photo."""
+    import cv2
+    import numpy as np
+
+    ok, buf = cv2.imencode(".png", mask.astype(np.uint8) * 255)
+    if not ok:
+        raise RuntimeError("could not encode a mask")
+    return buf.tobytes()
 
 
 @app.cls(
@@ -186,7 +180,6 @@ class Model:
             print(f"loaded {version} in {time.time() - t0:.1f}s "
                   f"({clf.image_size}px, T={clf.temperature}, {len(clf.views)} TTA views)")
         self._load_segmenter()
-        self.version = self.versions[0]
         # The average is built from raw probabilities, so its display scale is its
         # own — it lives on the volume beside the arms.
         ens = Path("/models/ensemble/calibration_T1.json")
@@ -210,36 +203,33 @@ class Model:
         self.fill = json.loads(Path("/models/segment/meta.json").read_text())["fill_target"]
         print(f"loaded segmenter in {time.time() - t0:.1f}s (fill {self.fill})")
 
-    def _segment(self, raw: bytes) -> dict | None:
-        """Each egg case named on its own, or None when the photo has fewer than two.
+    def _segment(self, raw: bytes) -> dict:
+        """The segmenter's verdict and, when it is clean, each egg case's box and mask.
 
-        Only a clean "ok" with two or more cases is split; "too_many" and "unsure"
-        photos are named whole, as they were before segmentation existed.
+        Only "ok" is trusted; "too_many", "unsure" and "no_egg_case" photos are named
+        whole, as they were before segmentation existed. Cases come top to bottom.
         """
         from multispecies import crops, segment
 
         t0 = time.time()
         img = segment.prepare(raw)
         seg = segment.segment(img, self.sam, self.keep_backbone, self.keep_head, self.fill)
-        info = {"status": seg["status"], "count": seg["count"],
-                "seconds": round(time.time() - t0, 1)}
-        if seg["status"] != "ok" or seg["count"] < 2:
-            return {**info, "cases": None}
-
-        shape = tuple(seg["size"])
-        masks = [segment.unrle(c["mask"], shape) for c in seg["cases"]]
-        h, w = shape
-        cases = []
-        for i, c in enumerate(seg["cases"]):
-            crop = crops.crop_instance(img, masks[i], tuple(c["box"]), fill=self.fill,
-                                       others=[m for j, m in enumerate(masks) if j != i])
-            x0, y0, x1, y1 = c["box"]
-            cases.append({"n": i + 1, "keep": c["keep"],
-                          "box": [round(x0 / w, 4), round(y0 / h, 4),
-                                  round(x1 / w, 4), round(y1 / h, 4)],
-                          "crop": _data_url(crop, 320), "image": crop})
-        info["overlay"] = _data_url(_outline(img, masks), 1024)
-        return {**info, "cases": cases}
+        out = {"status": seg["status"], "found": []}
+        if seg["status"] == "ok":
+            shape = tuple(seg["size"])
+            h, w = shape
+            masks = [segment.unrle(c["mask"], shape) for c in seg["cases"]]
+            for i, c in enumerate(seg["cases"]):
+                x0, y0, x1, y1 = c["box"]
+                out["found"].append({
+                    "box": [round(x0 / w, 4), round(y0 / h, 4), round(x1 / w, 4), round(y1 / h, 4)],
+                    "mask": masks[i],
+                    # A lone case is named on the whole photo, so it needs no crop.
+                    "crop": crops.crop_instance(img, masks[i], tuple(c["box"]), fill=self.fill,
+                                                others=[m for j, m in enumerate(masks) if j != i])
+                            if len(masks) > 1 else None})
+        out["seconds"] = round(time.time() - t0, 1)
+        return out
 
     @staticmethod
     def _check_key(req: dict) -> None:
@@ -248,33 +238,49 @@ class Model:
         if req.get("key") != os.environ["EGGIC_API_KEY"]:
             raise HTTPException(status_code=401, detail="bad key")
 
-    def _store(self, raw: bytes, filename: str | None, result: dict) -> str:
-        """The photo to the submissions bucket, everything else to one row."""
+    def _store(self, raw: bytes, filename: str | None, result: dict, masks: list) -> str:
+        """The photo and each case's mask to the bucket, one row per photo and per case."""
         now = datetime.now(timezone.utc)
         sid = f"{now.strftime('%Y%m%dT%H%M%S')}-{uuid.uuid4().hex[:8]}"
-        image_path = f"{now.strftime('%Y-%m')}/{sid}.jpg"
+        folder = now.strftime("%Y-%m")
 
-        _supabase("POST", f"/storage/v1/object/submissions/{image_path}",
+        _supabase("POST", f"/storage/v1/object/submissions/{folder}/{sid}.jpg",
                   content=raw, headers={"Content-Type": "image/jpeg"})
+        for case, mask in zip(result["cases"], masks):
+            if mask is not None:
+                case["mask_path"] = f"{folder}/{sid}/{case['n']}.png"
+                _supabase("POST", f"/storage/v1/object/submissions/{case['mask_path']}",
+                          content=_png(mask), headers={"Content-Type": "image/png"})
         _supabase("POST", "/rest/v1/submissions", headers={"Prefer": "return=minimal"}, json={
             "id": sid,
             "created_at": now.isoformat(),
-            "image_path": image_path,
+            "image_path": f"{folder}/{sid}.jpg",
             "filename": filename,
-            "model_version": result.get("model_version", self.version),
-            "top": result["top"],
-            "confidence": result["confidence"],
-            "confident": result["confident"],
+            "model_version": result["model_version"],
             "threshold": CONFIDENT_AT,
-            "ranked": {r["key"]: round(r["prob"], 6) for r in result["ranked"]},
-            "by_model": {m: {"top": r["top"], "confidence": round(r["confidence"], 6)}
-                         for m, r in result.get("by_model", {}).items()},
             "latency_ms": result["latency_ms"],
+            "segment_status": result["segmenter"]["status"],
+            "case_count": result["count"],
         })
+        if result["cases"]:
+            _supabase("POST", "/rest/v1/cases", headers={"Prefer": "return=minimal"}, json=[{
+                "submission_id": sid,
+                "n": c["n"],
+                "box": c["box"],
+                "outline": c["outline"],
+                "mask_path": c["mask_path"],
+                "top": c["top"],
+                "confidence": c["confidence"],
+                "confident": c["confident"],
+                "ranked": {r["key"]: round(r["prob"], 6) for r in c["ranked"]},
+                "by_model": {m: {"top": r["top"], "confidence": round(r["confidence"], 6)}
+                             for m, r in c["by_model"].items()},
+            } for c in result["cases"]])
         return sid
 
     @modal.fastapi_endpoint(method="POST", docs=False)
     def predict(self, req: dict):
+        """One photo in, its egg cases out: README, "What the API returns"."""
         from fastapi import HTTPException
         from inference import load_rgb
 
@@ -288,34 +294,59 @@ class Model:
                                 detail=f"could not decode image: {type(exc).__name__}: {exc}")
 
         # Default to every loaded arm, not the first: a caller that names no models
-        # (the old front-end does not) must still get the average, which is the only
-        # configuration measured as error-free at the accept line.
+        # must still get the average, which is the only configuration measured as
+        # error-free at the accept line.
         wanted = req.get("models") or list(self.versions)
         unknown = [m for m in wanted if m not in self.clfs]
         if unknown:
             raise HTTPException(status_code=400,
                                 detail=f"unknown model(s) {unknown}; loaded: {self.versions}")
-        # The ensemble is the arm the held-out evaluation actually favours, so it
-        # leads whenever more than one model ran.
         primary = req.get("primary") or ("ensemble" if len(wanted) > 1 else wanted[0])
         if primary not in (["ensemble"] if len(wanted) > 1 else []) + wanted:
             raise HTTPException(status_code=400, detail=f"primary {primary!r} was not run")
 
         t0 = time.time()
-        result = self._classify(image, wanted, primary)
-        result["latency_ms"] = round((time.time() - t0) * 1000)
+        seg = (self._segment(raw) if req.get("segment", True)
+               else {"status": "skipped", "seconds": 0.0, "found": []})
+        found = seg["found"]
+        if len(found) < 2:
+            # One case or none found cleanly: name the whole photo, as the model was trained.
+            found = [found[0] if found else {"box": None, "mask": None, "crop": None}]
+            found[0]["crop"] = image
+        cases = [{"box": f["box"], "mask": f["mask"],
+                  **self._answer(f["crop"], wanted, primary)} for f in found]
 
-        # The whole photo is always named and stored; the cases ride alongside it.
-        result["segments"] = self._segment(raw) if req.get("segment", True) else None
-        for case in (result["segments"] or {}).get("cases") or []:
-            r = self._classify(case.pop("image"), wanted, primary)
-            case.update({k: r[k] for k in ("top", "top_name", "confidence", "confident")},
-                        ranked=r["ranked"][:3])
+        # A case the model is sure is not an egg case is not reported: an empty list
+        # means none was found, and no_egg_case says how sure that call was.
+        none = [c for c in cases if c["confident"] and c["top"] == "NoEggCase"]
+        cases = [c for c in cases if not (c["confident"] and c["top"] == "NoEggCase")]
+        masks = [c.pop("mask") for c in cases]
+        for n, (c, m) in enumerate(zip(cases, masks), 1):
+            c.update(n=n, outline=_outline(m) if m is not None else None, mask_path=None)
 
+        result = {
+            "id": None,
+            "model_version": primary,
+            "threshold": CONFIDENT_AT,
+            "latency_ms": round((time.time() - t0) * 1000),
+            "segmenter": {"status": seg["status"], "seconds": seg["seconds"]},
+            "count": len(cases),
+            "no_egg_case": none[0]["confidence"] if none and not cases else None,
+            "cases": [{k: c[k] for k in CASE_FIELDS} for c in cases],
+        }
         # Off for local runs; the deployed site turns it on.
-        result["id"] = (self._store(raw, req.get("filename"), result)
-                        if req.get("store") else None)
+        if req.get("store"):
+            result["id"] = self._store(raw, req.get("filename"), result, masks)
         return result
+
+    def _answer(self, image, wanted: list, primary: str) -> dict:
+        """One egg case's answer, with every class's score and each arm's call."""
+        r = self._classify(image, wanted, primary)
+        return {"top": r["top"], "top_name": r["top_name"], "confidence": r["confidence"],
+                "confident": r["confident"], "ranked": r["ranked"],
+                "by_model": {m: {"top": a["top"], "top_name": a["top_name"],
+                                 "confidence": a["confidence"]}
+                             for m, a in r["by_model"].items()}}
 
     def _classify(self, image, wanted: list, primary: str) -> dict:
         """Every wanted arm, their average, the shown scale and the accept line."""
@@ -340,11 +371,8 @@ class Model:
             r["display_temperature"] = t
 
         result = dict(by_model[primary])
-        result["model_version"] = primary
-        result["models_run"] = list(by_model)
         result["by_model"] = by_model
         result["confident"] = result["confidence"] >= CONFIDENT_AT
-        result["threshold"] = CONFIDENT_AT
         return result
 
     @staticmethod
@@ -382,22 +410,24 @@ feedback_image = (
 )
 @modal.fastapi_endpoint(method="POST", docs=False)
 def feedback(req: dict):
-    """Record whether the call was right, and what the species actually was."""
+    """Record whether one egg case's answer was right, and what it actually was."""
     from fastapi import HTTPException
 
     if req.get("key") != os.environ["EGGIC_API_KEY"]:
         raise HTTPException(status_code=401, detail="bad key")
 
-    sid = str(req.get("id") or "")
+    sid, n = str(req.get("id") or ""), req.get("n")
     if not SUBMISSION_ID.fullmatch(sid):
         raise HTTPException(status_code=400, detail=f"bad submission id {sid!r}")
+    if type(n) is not int or n < 1:
+        raise HTTPException(status_code=400, detail=f"bad case number {n!r}")
 
     rows = _supabase(
-        "PATCH", f"/rest/v1/submissions?id=eq.{sid}",
+        "PATCH", f"/rest/v1/cases?submission_id=eq.{sid}&n=eq.{n}",
         headers={"Prefer": "return=representation"},
         json={"correct": req.get("correct"), "user_species": req.get("user_species"),
               "feedback_at": datetime.now(timezone.utc).isoformat()},
     ).json()
     if not rows:
-        raise HTTPException(status_code=404, detail=f"no submission {sid}")
-    return {"stored": True, "id": sid}
+        raise HTTPException(status_code=404, detail=f"no case {n} in submission {sid}")
+    return {"stored": True, "id": sid, "n": n}

@@ -1,5 +1,5 @@
-// Vercel serverless function: records whether a call was right against the
-// stored submission. The id comes from the matching /api/predict response.
+// Vercel serverless function: records whether one egg case's answer was right.
+// id and n (the case number) come from the matching /api/predict response.
 
 export const config = { maxDuration: 30 };
 
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Server is not configured.' });
   }
 
-  const { id, correct, user_species } = req.body || {};
+  const { id, n, correct, user_species } = req.body || {};
   if (!id) {
     // Nothing was stored for this photo, so there is nothing to attach to.
     return res.status(200).json({ stored: false, reason: 'no submission id' });
@@ -25,6 +25,7 @@ export default async function handler(req, res) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id,
+        n,
         correct: correct ?? null,
         user_species: user_species ?? null,
         key: EGGIC_API_KEY,

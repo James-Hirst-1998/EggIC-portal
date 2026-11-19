@@ -4,7 +4,8 @@ answer into the key. Each photo is the same 1024px JPEG the staff see.
     python scripts/score_test_set.py
 
 Runs the deployed GPU endpoint: about 2 s a photo once warm, plus one cold start.
-Nothing is stored as a submission.
+Nothing is stored as a submission. Each test photo holds one egg case, so it is
+named whole (no segmenting), as the staff saw it.
 """
 
 from __future__ import annotations
@@ -28,12 +29,15 @@ def main() -> None:
         jpeg = call("GET", f"/storage/v1/object/test-images/{r['image_path']}").content
         resp = requests.post(endpoint, timeout=300, json={
             "image": "data:image/jpeg;base64," + base64.b64encode(jpeg).decode(),
-            "key": key, "store": False,
+            "key": key, "store": False, "segment": False,
         })
         resp.raise_for_status()
         result = resp.json()
+        # An empty list is the model sure the photo holds no egg case: a confident answer.
+        top, conf = ((result["cases"][0]["top"], result["cases"][0]["confidence"])
+                     if result["cases"] else ("NoEggCase", result["no_egg_case"]))
         call("PATCH", f"/rest/v1/test_images?image_path=eq.{r['image_path']}",
-             json={"model_top": result["top"], "model_confidence": result["confidence"]})
+             json={"model_top": top, "model_confidence": conf})
         print(f"\r{i}/{len(todo)}", end="", flush=True)
     print()
 
