@@ -117,6 +117,20 @@ from the sibling `EggIC/` checkout; when that lags `main`, point at a checkout o
 `EGGIC_SRC=../EggIC-<branch>/eggic-fgvc/src modal deploy modal/app.py`.
 The deploy fails loudly rather than serving a checkout that cannot build DINOv3.
 
+### Segmentation
+
+Every photo is segmented before it is named (EggIC `multispecies/segment.py`: SAM
+vit_h proposes masks, a keep head keeps whole egg cases). When it finds two or more
+cleanly, the reply's `segments` lists each case with its box, crop and species, and
+an outlined photo; otherwise `segments.cases` is null and only the whole photo is
+named. The whole photo is always named and stored. `"segment": false` skips it. The
+head and the crop fill are copied, so a retrain in EggIC changes nothing until recopied:
+
+```bash
+modal volume put eggic-models keep_head_ac.npz segment/keep_head.npz
+modal volume put eggic-models meta.json segment/meta.json   # {"fill_target": 0.7011}
+```
+
 Old versions stay on the volume, so rollback is one redeploy. Every stored
 submission records the `model_version` that served it, which is what makes two
 models comparable on the same real photographs.
