@@ -121,9 +121,8 @@ The deploy fails loudly rather than serving a checkout that cannot build DINOv3.
 
 Every photo is segmented before it is named (EggIC `multispecies/segment.py`: SAM
 vit_h proposes masks, a keep head keeps whole egg cases). When it finds two or more
-cleanly, the reply's `segments` lists each case with its box, crop and species, and
-an outlined photo; otherwise `segments.cases` is null and only the whole photo is
-named. The whole photo is always named and stored. `"segment": false` skips it. The
+cleanly, each is cropped and named on its own; otherwise the whole photo is named as one
+case, outlined if the segmenter found exactly one. `"segment": false` skips it. The
 head and the crop fill are copied, so a retrain in EggIC changes nothing until recopied:
 
 ```bash
@@ -135,31 +134,68 @@ Old versions stay on the volume, so rollback is one redeploy. Every stored
 submission records the `model_version` that served it, which is what makes two
 models comparable on the same real photographs.
 
+## What the API returns
+
+One photo in, a list of egg cases out. One case and five come back the same way; none is
+an empty list.
+
+```json
+{
+  "id": "20261119T141007-c7d4a330",   // the stored submission; null when not stored
+  "model_version": "ensemble",        // the arm that answered
+  "threshold": 0.95,                  // the accept line: at or above it, a case is "confident"
+  "latency_ms": 2140,
+  "segmenter": {"status": "ok", "seconds": 1.8},  // ok | no_egg_case | too_many | unsure | skipped
+  "count": 2,
+  "no_egg_case": null,                // when cases is empty: how sure the model was there is none
+  "cases": [
+    {
+      "n": 1,                                   // 1, 2, … top to bottom
+      "box": [0.10, 0.22, 0.34, 0.58],          // x0, y0, x1, y1 as fractions of the photo
+      "outline": [[[0.12, 0.23], [0.30, 0.25], …]],  // the mask's edge, same fractions
+      "mask_path": "2026-11/20261119T141007-c7d4a330/1.png",  // in the submissions bucket
+      "top": "ThornbackRay", "top_name": "Thornback Ray",
+      "confidence": 0.97, "confident": true,
+      "ranked": [{"key": "ThornbackRay", "name": "Thornback Ray", "latin": "Raja clavata", "prob": 0.97}, …],
+      "by_model": {"s2_dinov2": {"top": "ThornbackRay", "top_name": "Thornback Ray", "confidence": 0.96}, …}
+    }
+  ]
+}
+```
+
+`ranked` holds all eleven classes on the shown scale, best first. A case named from the
+whole photo has `box`, `outline` and `mask_path` null. A case the model is sure is not an
+egg case is left out. Fractions, not pixels, so they fit the photo at any size.
+
 ## What gets stored
 
 Everything is in one Supabase project; `supabase/migrations/` is the whole schema.
 
 | | holds | readable by |
 |---|---|---|
-| bucket `submissions` | every photo the live site identified, `YYYY-MM/<id>.jpg` | secret key only |
-| table `submissions` | one row per photo: top species, confidence, all nine probabilities, each arm's answer, the tester's verdict | secret key only |
+| bucket `submissions` | every photo the live site identified, `YYYY-MM/<id>.jpg`, and each case's mask, `YYYY-MM/<id>/<n>.png` | secret key only |
+| table `submissions` | one row per photo: file, model, accept line, segmenter verdict, how many cases | secret key only |
+| table `cases` | one row per egg case: box, outline, mask file, answer, every class's score, each arm's answer, the tester's verdict | secret key only |
 | bucket `test-images` | the staff-test photos, under random names | logged-in testers |
 | table `test_images` | the true species of each test photo, and what the model said | secret key only |
 | table `test_answers` | one row per tester per photo: the species they chose and an optional note | each tester, own rows only |
 
 The stored photograph is what the browser sent: downscaled to 1024px on the long
-edge, not the phone original. In `submissions`, `correct` is null until a tester
-answers; `user_species` is the class they chose; `threshold` is the accept line in
-force when the photo was served. Submissions from before Supabase were copied in
-from the old Modal volume with `scripts/import_volume.py`.
+edge, not the phone original. In `cases`, `correct` is null until a tester answers
+that case; `user_species` is the class they chose. `threshold` on `submissions` is the
+accept line in force when the photo was served. Photos from before 2026-11-19 were named
+whole: each has one case with no outline, and keeps its old answer columns on
+`submissions` too. Submissions from before Supabase were copied in from the old Modal
+volume with `scripts/import_volume.py`.
 
 ### Pulling the data back
 
 In the Supabase SQL editor:
 
 ```sql
--- the retraining queue
-select * from submissions where correct = false order by created_at desc;
+-- the retraining queue: every case a tester marked wrong, with its photo
+select s.image_path, c.* from cases c join submissions s on s.id = c.submission_id
+where c.correct = false order by s.created_at desc;
 
 -- staff on the test, scored like the model: right when sure, then how often sure
 select u.email, count(*) as answered,
@@ -235,9 +271,9 @@ Cost control matters more than access control here: the GPU scales to zero after
 
 ## Frontend behaviour
 
-Single screen, no page scroll: photograph on the left, verdict and top three species
-on the right, the remaining six behind a disclosure. Light by default, with a theme
-toggle persisted in localStorage.
+Single screen, no page scroll (stacked on a phone): photograph on the left with each egg
+case outlined, one card per case on the right, top three species shown and the rest behind
+a disclosure. Light by default, with a theme toggle persisted in localStorage.
 
 **Batches.** Up to 20 photographs at a time, identified one after another with
 results appearing as they land, so review starts on the first while the rest are
@@ -245,9 +281,13 @@ still running. A filmstrip jumps between them; `←`/`→` also work. The file p
 cannot cap selection, so the cap is enforced afterwards and a banner names the files
 that were left out.
 
-**Feedback.** `Y` / `N` or the two buttons. *Not correct* opens a fixed alphabetical
-list of all nine species — "Choose the correct species" — and both answers post to
-`/api/feedback` against the stored submission.
+**Egg cases.** One card per case, the same for one as for five. A card opens to its
+scores and its own feedback; each case's mask can be hidden on its own or all at once,
+and clicking a mask on the photo opens its card.
+
+**Feedback.** `Y` / `N` or the two buttons, on the open case. *Not correct* opens a fixed
+alphabetical list of all nine species — "Choose the correct species" — and both answers
+post to `/api/feedback` against that case. Then the next unanswered case, or photo.
 
 **Upload size.** The browser downscales to 1024px on the long edge before upload; the
 model works at 448px, so sending a 12MP original only makes the user wait on their own

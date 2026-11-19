@@ -213,13 +213,6 @@
         margin: 0 0 18px;
         max-width: 64ch;
       }
-      .notice {
-        background: var(--accent-soft);
-        border-radius: 10px;
-        padding: 10px 14px;
-        margin: 0 0 18px;
-        font-size: 14px;
-      }
       .tiles {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -245,6 +238,16 @@
       .tile .s {
         font-size: 13px;
         color: var(--dim);
+      }
+      .headline .tile {
+        padding: 18px 20px;
+      }
+      .headline .tile .k {
+        font-size: 15px;
+        color: var(--fg);
+      }
+      .headline .tile .v {
+        font-size: 44px;
       }
       .scroll {
         overflow-x: auto;
@@ -398,19 +401,24 @@
       </section>
 
       <section id="results">
-        <h2>How people and the identifier did</h2>
+        <h2>How people and the AI model did</h2>
         <p class="lede" id="lede"></p>
-        <p class="notice" id="unfinished" hidden>
-          You have not finished the test yet. The results below name the species
-          in some of its photos, so you may want to
-          <a href="/test">finish it first</a>.
-        </p>
 
-        <div class="tiles" id="tiles"></div>
+        <h3>Who got more right</h3>
+        <div class="tiles headline" id="headline"></div>
+
+        <h3>When the AI model only answers when it is sure</h3>
+        <p class="lede">
+          The AI model also says how sure it is of each answer. Give it a
+          confidence limit and it names only the photos it is at least that sure
+          of, and says "not sure" on the rest so a person can check them. A higher
+          limit means fewer answers and fewer mistakes.
+        </p>
+        <div class="tiles" id="limits"></div>
 
         <h3>By species</h3>
         <p class="lede">
-          Sorted with the species people found hardest first. The identifier's
+          Sorted with the species people found hardest first. The AI model's
           column is its best guess on every photo.
         </p>
         <div class="scroll">
@@ -418,7 +426,7 @@
         </div>
         <p class="small" id="mixups"></p>
 
-        <h3>Photos where people and the identifier differed</h3>
+        <h3>Photos where people and the AI model differed</h3>
         <p class="lede">
           A few photos where one side found it hard and the other did not. Tap a
           photo to see it larger.

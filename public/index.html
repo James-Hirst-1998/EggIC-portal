@@ -159,22 +159,48 @@
   details summary::before { content: "▸ "; }
   details[open] summary::before { content: "▾ "; }
 
-  /* ---------- several egg cases in one photo ---------- */
-  .cases { margin-bottom: 18px; }
-  .case { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center;
-          padding: 9px 0; border-top: 1px solid var(--line); }
-  .case:first-of-type { border-top: none; }
-  .case img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px;
-              background: var(--panel); }
-  .case .num { display: inline-grid; place-items: center; width: 20px; height: 20px;
+  /* ---------- the egg cases: one card each, however many ---------- */
+  #masks { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #masks .mask { cursor: pointer; }
+  #masks polygon { fill: rgba(255,214,0,.16); stroke: #ffd600; stroke-width: 2;
+                   vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+  #masks .sel polygon { fill: rgba(255,214,0,.3); stroke-width: 3.5; }
+  #masks circle { fill: var(--accent-solid); stroke: #fff; stroke-width: 2;
+                  vector-effect: non-scaling-stroke; }
+  #masks text { fill: #fff; font-weight: 700; text-anchor: middle; dominant-baseline: central;
+                pointer-events: none; }
+  .cases-head { display: flex; align-items: baseline; justify-content: space-between;
+                gap: 10px; margin-bottom: 8px; }
+  .cases-head h2 { margin: 0; }
+  .linkbtn { background: none; border: none; padding: 0; color: var(--accent); cursor: pointer;
+             font-size: 12.5px; }
+  .case { border: 1px solid var(--line); border-left: 3px solid var(--dim); border-radius: 12px;
+          margin-bottom: 10px; }
+  .case.confident { border-left-color: var(--accent); }
+  .case.open { box-shadow: 0 0 0 3px var(--ring); }
+  .case-top { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 8px; }
+  .case-head { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+               background: none; border: none; padding: 0; color: inherit; cursor: pointer;
+               text-align: left; font: inherit; }
+  .case-head canvas { width: 52px; height: 52px; border-radius: 8px; flex: none;
+                      background: var(--panel); }
+  .case .num { display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none;
                border-radius: 50%; background: var(--accent-solid); color: #fff;
-               font-size: 11.5px; font-weight: 700; margin-right: 6px; }
-  .case .label { font-size: 14.5px; font-weight: 600; }
-  .case .sub { font-size: 12.5px; color: var(--dim); }
-  .case .pct { font-variant-numeric: tabular-nums; font-size: 14px; color: var(--dim); }
-  .case.confident .pct { color: var(--accent); font-weight: 650; }
+               font-size: 12px; font-weight: 700; }
+  .case .what { display: flex; flex-direction: column; min-width: 0; }
+  .case .what .label { font-size: 16px; font-weight: 650; line-height: 1.2; }
+  .case .what .sub { font-size: 12.5px; color: var(--dim); }
+  .case.confident .what .sub { color: var(--accent); }
+  .case .fbmark { font-size: 13px; font-weight: 700; flex: none; }
+  .fbmark.yes { color: var(--accent); } .fbmark.no { color: var(--bad); }
+  .eye { flex: none; border: 1px solid var(--line); background: var(--bg); color: var(--dim);
+         border-radius: 8px; padding: 4px 9px; font-size: 12px; cursor: pointer; }
+  .eye.on { border-color: var(--accent); color: var(--accent); }
+  .case-body { padding: 4px 14px 14px; border-top: 1px solid var(--line); }
+  .case-body .note { font-size: 13px; color: var(--dim); margin: 10px 0 12px; }
+  .case-body .latin { font-style: italic; }
 
-  .feedback { margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--line); }
+  .feedback { margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line); }
   .fb-buttons { display: flex; gap: 8px; }
   .fb-buttons button { flex: 1; padding: 9px 12px; border-radius: 9px; font-size: 13.5px;
                        border: 1px solid var(--line); background: var(--bg); color: var(--fg);
@@ -185,17 +211,17 @@
   .fb-buttons button.on[data-correct="no"] { background: var(--bad-solid);
                        border-color: var(--bad-solid); color: #fff; }
   .fb-buttons kbd { font: inherit; font-size: 11px; opacity: .6; margin-left: 4px; }
-  #correction { display: none; margin-top: 12px; }
-  #correction.show { display: block; }
-  #correction label { display: block; font-size: 12.5px; font-weight: 600;
+  .correction { display: none; margin-top: 12px; }
+  .correction.show { display: block; }
+  .correction label { display: block; font-size: 12.5px; font-weight: 600;
                       color: var(--dim); margin-bottom: 5px; }
-  #true-species, #other-species { width: 100%; padding: 9px 10px; border-radius: 9px;
+  .correction select, .correction input { width: 100%; padding: 9px 10px; border-radius: 9px;
                   border: 1px solid var(--line); background: var(--bg);
                   color: var(--fg); font-size: 13.5px; }
-  #true-species:focus, #other-species:focus { outline: 2px solid var(--ring);
+  .correction select:focus, .correction input:focus { outline: 2px solid var(--ring);
                                               border-color: var(--accent); }
-  #other-wrap { display: none; margin-top: 10px; }
-  #other-wrap.show { display: block; }
+  .other-wrap { display: none; margin-top: 10px; }
+  .other-wrap.show { display: block; }
   .fb-hint { font-size: 12px; color: var(--dim); margin-top: 9px; }
 
   .banner { flex: none; margin: 0 22px 10px; padding: 8px 13px; border-radius: 9px;
@@ -217,15 +243,15 @@
 
   @media (max-width: 880px) {
     body { overflow: auto; }
-    #review.show { grid-template-columns: 1fr; }
+    #review.show { grid-template-columns: 1fr; height: auto; }
     .stage { grid-template-rows: auto 52vh auto; }
     .panel { overflow: visible; }
   }
   .compare { margin:.9rem 0 0; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
   .compare .crow { display:flex; justify-content:space-between; gap:.5rem;
     padding:.45rem .6rem; font-size:.86rem; border-top:1px solid var(--line); }
-  .compare .crow:first-child { border-top:0; background:var(--card); font-weight:600; }
-  .compare .cname { color:var(--muted); }
+  .compare .crow:first-child { border-top:0; background:var(--panel); font-weight:600; }
+  .compare .cname { color:var(--dim); }
   .compare .agree { color:var(--ok, #1a7f37); }
   .compare .differ { color:var(--warn, #b25f00); font-weight:600; }
 </style>
@@ -281,6 +307,7 @@
       </div>
       <div class="frame">
         <img id="preview" alt="">
+        <svg id="masks" preserveAspectRatio="xMidYMid meet"></svg>
         <button class="nav prev" id="prev" type="button" aria-label="Previous">‹</button>
         <button class="nav next" id="next" type="button" aria-label="Next">›</button>
       </div>
@@ -329,8 +356,9 @@ const OTHER_SPECIES = [
 const OTHER_KEY = '__other__';
 
 const drop = $('drop'), fileInput = $('file'), intro = $('intro'), review = $('review');
-let items = [];  // {name, file, dataUrl, state, result, error, stored,
-                 //  feedback:{correct, label, otherText}}
+let items = [];  // {name, file, dataUrl, state, result, error,
+                 //  sel: the open egg case, hidden: case numbers whose mask is off,
+                 //  fb / stored / storedReason: keyed by case number}
 let current = 0;
 let firstDone = false;   // once one result is back, the model is awake
 let coldRetryUsed = false;  // the single cold-start retry, spent at most once a session
@@ -347,7 +375,7 @@ $('theme').addEventListener('click', () => {
 
 $('restart').addEventListener('click', () => {
   track('new_batch_clicked', {
-    reviewed: items.filter(i => i.feedback.correct !== null).length,
+    reviewed: items.filter(i => cases(i).some(c => fbOf(i, c.n).correct !== null)).length,
     of: items.length,
   });
   items = []; current = 0;
@@ -455,8 +483,7 @@ function accept(files, source) {
   items = usable.slice(0, MAX_BATCH).map(f => ({
     name: f.name, file: f, dataUrl: null, state: 'queued',
     ready: null, converting: false, prepError: null,
-    result: null, error: null, feedback: {correct: null, label: null, otherText: null},
-    stored: undefined,
+    result: null, error: null, sel: 0, hidden: new Set(), fb: {}, stored: {}, storedReason: {},
   }));
   current = 0;
   intro.style.display = 'none';
@@ -614,10 +641,11 @@ async function runBatch() {
         data = await callPredict(item);
       }
       item.result = data; item.state = 'done'; firstDone = true; ok++;
-      const top = data.ranked[0];
+      const first = data.cases[0];
       track('prediction_succeeded', {
-        species: top.name, confidence: +top.prob.toFixed(3), confident: !!data.confident,
-        runner_up: data.ranked[1] && data.ranked[1].name,
+        cases: data.count, segmenter: data.segmenter.status,
+        identified: data.cases.filter(c => c.confident).length,
+        species: first ? first.top_name : 'none', confidence: first ? +first.confidence.toFixed(3) : null,
         ms: Math.round(performance.now() - started),
         cold_start: cold, position: i + 1, batch_size: items.length,
         heic: isHeic(item.file),
@@ -655,10 +683,23 @@ $('next').addEventListener('click', () => go(current + 1));
 
 function renderAll() { showPhoto(); renderStrip(); renderPanel(); }
 
+// Every reply is a list of egg cases, empty when there is none: one is the same as five.
+const cases = item => item.result ? item.result.cases : [];
+const fbOf = (item, n) => item.fb[n] ||= {correct: null, label: null, otherText: null};
+const pct = p => Math.round(p * 100);
+
+function h(tag, props = {}, ...kids) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k.includes('-')) node.setAttribute(k, v); else node[k] = v;
+  }
+  node.append(...kids.filter(k => k != null && k !== false));
+  return node;
+}
+
 function showPhoto() {
   const item = items[current];
-  // A photo split into egg cases shows them outlined and numbered, as the panel lists them.
-  $('preview').src = item.result?.segments?.overlay || item.dataUrl || '';
+  $('preview').src = item.dataUrl || '';
   $('preview').alt = item.name;
   $('fname').textContent = item.name;
   $('of').textContent = items.length > 1 ? `${current + 1} of ${items.length}` : '';
@@ -667,28 +708,58 @@ function showPhoto() {
   const single = items.length < 2;
   $('prev').style.display = $('next').style.display = single ? 'none' : 'grid';
   $('strip').style.display = single ? 'none' : 'flex';
+  drawMasks();
 }
+
+/* Each egg case's outline over the photo, in the photo's own pixels. The SVG letterboxes
+   exactly as the img's object-fit: contain does, so the two always line up. */
+const SVG = 'http://www.w3.org/2000/svg';
+function svg(tag, attrs) {
+  const node = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  return node;
+}
+function drawMasks() {
+  const layer = $('masks'), img = $('preview'), item = items[current];
+  layer.replaceChildren();
+  const w = img.naturalWidth, ht = img.naturalHeight;
+  if (!item || !w || !img.src) return;
+  layer.setAttribute('viewBox', `0 0 ${w} ${ht}`);
+  const r = Math.max(w, ht) / 42;
+  cases(item).forEach((c, i) => {
+    if (!c.outline || item.hidden.has(c.n)) return;
+    const g = svg('g', {class: i === item.sel ? 'mask sel' : 'mask'});
+    for (const poly of c.outline)
+      g.append(svg('polygon', {points: poly.map(([x, y]) => `${x * w},${y * ht}`).join(' ')}));
+    const [x0, y0, x1, y1] = c.box;
+    const cx = (x0 + x1) / 2 * w, cy = (y0 + y1) / 2 * ht;
+    const label = svg('text', {x: cx, y: cy, 'font-size': r * 1.15});
+    label.textContent = c.n;
+    g.append(svg('circle', {cx, cy, r}), label);
+    g.addEventListener('click', () => select(i));
+    layer.append(g);
+  });
+}
+$('preview').addEventListener('load', drawMasks);
 
 // Filenames come from the user's disk and land in an attribute, so they are escaped.
 const esc = s => String(s).replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const speciesOptions = (list, fb) => list.map(sp =>
-  `<option value="${sp.key}"${fb.label === sp.key ? ' selected' : ''}>`
-  + `${sp.name} — ${sp.latin}</option>`).join('');
+function badgeOf(item) {
+  if (item.state === 'error') return '<div class="badge err">!</div>';
+  if (item.state !== 'done') return '<div class="badge wait">·</div>';
+  const said = cases(item).map(c => fbOf(item, c.n).correct);
+  if (said.includes(false)) return '<div class="badge no">✕</div>';
+  if (said.length && said.every(v => v === true)) return '<div class="badge ok">✓</div>';
+  return '';
+}
 
 function renderStrip() {
-  $('strip').innerHTML = items.map((item, i) => {
-    const fb = item.feedback.correct;
-    let badge = '';
-    if (item.state === 'error') badge = '<div class="badge err">!</div>';
-    else if (item.state !== 'done') badge = '<div class="badge wait">·</div>';
-    else if (fb === true) badge = '<div class="badge ok">✓</div>';
-    else if (fb === false) badge = '<div class="badge no">✕</div>';
-    return `<div class="thumb${i === current ? ' active' : ''}${item.state === 'done' ? '' : ' pending'}"
-                 data-i="${i}" title="${esc(item.name)}"
-                 style="background-image:url('${item.dataUrl || ''}')">${badge}</div>`;
-  }).join('');
+  $('strip').innerHTML = items.map((item, i) =>
+    `<div class="thumb${i === current ? ' active' : ''}${item.state === 'done' ? '' : ' pending'}"
+          data-i="${i}" title="${esc(item.name)}"
+          style="background-image:url('${item.dataUrl || ''}')">${badgeOf(item)}</div>`).join('');
   [...$('strip').children].forEach(el =>
     el.addEventListener('click', () => go(+el.dataset.i)));
 }
@@ -704,38 +775,50 @@ function modelChoice() {
 
 const MODEL_LABEL = {s2_dinov2: 'DINOv2', s2_dinov3: 'DINOv3', ensemble: 'Both, averaged'};
 
-// The two answers that are not a species say what to do instead.
+// An answer that is not one of the nine says what to do instead.
 const SPECIAL = {
-  NoEggCase: {lead: 'No egg case found',
-              note: 'Try a closer photograph of a single egg case.'},
   RareSpecies: {lead: 'Possibly a rare species',
                 note: 'Send this photograph to the Shark Trust for an expert to check.'},
 };
 
-function compareHtml(d) {
-  if (!COMPARE) return '';
-  const by = d.by_model || {};
+function compareBlock(c) {
+  const by = c.by_model || {};
   const arms = Object.keys(by).filter(m => m !== 'ensemble');
-  if (arms.length < 2) return '';
-  const calls = arms.map(m => by[m].top);
-  const agree = calls.every(c => c === calls[0]);
-  const rows = ['ensemble', ...arms].filter(m => by[m]).map(m => {
-    const r = by[m];
-    const cls = m === 'ensemble' ? '' : (r.top === by.ensemble.top ? 'agree' : 'differ');
-    return `<div class="crow"><span class="cname">${MODEL_LABEL[m] || m}</span>
-      <span class="${cls}">${r.top_name} · ${(r.confidence * 100).toFixed(0)}%</span></div>`;
-  }).join('');
-  return `<h2>${agree ? 'Both models agree' : 'The models disagree'}</h2>
-    <div class="compare">${rows}</div>`;
+  if (!COMPARE || arms.length < 2) return null;
+  const agree = arms.every(m => by[m].top === by[arms[0]].top);
+  return h('div', {},
+    h('h2', {textContent: agree ? 'Both models agree' : 'The models disagree'}),
+    h('div', {className: 'compare'}, ...['ensemble', ...arms].filter(m => by[m]).map(m =>
+      h('div', {className: 'crow'},
+        h('span', {className: 'cname', textContent: MODEL_LABEL[m] || m}),
+        h('span', {className: m === 'ensemble' ? '' : by[m].top === by.ensemble.top ? 'agree' : 'differ',
+                   textContent: `${by[m].top_name} · ${pct(by[m].confidence)}%`})))));
 }
 
-function rowHtml(r, isTop) {
-  const pct = (r.prob * 100).toFixed(1);
-  return `<div class="row${isTop ? ' top' : ''}">
-    <div><div class="label">${r.name}</div><div class="latin">${r.latin}</div></div>
-    <div class="pct">${pct}%</div>
-    <div class="bar"><span style="width:${pct}%"></span></div>
-  </div>`;
+function scoreRow(r, isTop) {
+  const p = (r.prob * 100).toFixed(1);
+  const bar = h('span');
+  bar.style.width = `${p}%`;
+  return h('div', {className: isTop ? 'row top' : 'row'},
+    h('div', {}, h('div', {className: 'label', textContent: r.name}),
+                 h('div', {className: 'latin', textContent: r.latin})),
+    h('div', {className: 'pct', textContent: `${p}%`}),
+    h('div', {className: 'bar'}, bar));
+}
+
+/* A small square of the photo around one egg case, cut in the browser from the photo
+   already on screen, so the reply carries no pictures. */
+function cropThumb(src, box) {
+  const c = h('canvas', {width: 104, height: 104});
+  const img = new Image();
+  img.onload = () => {
+    const [x0, y0, x1, y1] = box || [0, 0, 1, 1];
+    const side = Math.max((x1 - x0) * img.width, (y1 - y0) * img.height) * 1.08;
+    c.getContext('2d').drawImage(img, (x0 + x1) / 2 * img.width - side / 2,
+      (y0 + y1) / 2 * img.height - side / 2, side, side, 0, 0, c.width, c.height);
+  };
+  img.src = src;
+  return c;
 }
 
 function renderPanel() {
@@ -743,212 +826,242 @@ function renderPanel() {
   const panel = $('panel');
 
   if (item.state === 'error') {
-    panel.innerHTML = `<div class="centered"><div>
-      <p style="color:var(--bad)">Could not identify this photo.</p>
-      <p>${item.error}</p></div></div>`;
+    panel.replaceChildren(h('div', {className: 'centered'}, h('div', {},
+      h('p', {style: 'color:var(--bad)', textContent: 'Could not identify this photo.'}),
+      h('p', {textContent: item.error}))));
     return;
   }
   if (item.state !== 'done') {
-    // The model sleeps when unused, so the first call of a session waits on it
-    // waking. Saying so up front stops it reading as a hang.
-    const wakeNote = (!firstDone && item.state === 'running')
-      ? `<div class="wake-note">
-           <strong>The first photograph in a batch can take up to a minute</strong>
-           while the model wakes up. Every photograph after it comes back in a few seconds.
-           <span class="wake-fine">This demo runs on hardware that sleeps when nobody is
-           using it, to keep costs down. Deployed in-house, the wait disappears entirely.</span>
-         </div>`
-      : '';
     const label = item.converting          ? 'Converting from your iPhone’s HEIC…'
                 : item.state === 'running' ? 'Identifying…'
                 : 'Queued';
-    panel.innerHTML = `<div class="centered"><div class="spinner"></div>
-      <div>${label}</div>${item.converting ? '' : wakeNote}</div>`;
+    // The model sleeps when unused, so the first call of a session waits on it
+    // waking. Saying so up front stops it reading as a hang.
+    const wake = !firstDone && item.state === 'running' && !item.converting
+      && h('div', {className: 'wake-note'},
+        h('strong', {textContent: 'The first photograph in a batch can take up to a minute'}),
+        ' while the model wakes up. Every photograph after it comes back in a few seconds.',
+        h('span', {className: 'wake-fine', textContent: 'This demo runs on hardware that sleeps ' +
+          'when nobody is using it, to keep costs down. Deployed in-house, the wait disappears entirely.'}));
+    panel.replaceChildren(h('div', {className: 'centered'},
+      h('div', {className: 'spinner'}), h('div', {textContent: label}), wake));
     return;
   }
 
-  const d = item.result, top = d.ranked[0], pct = (top.prob * 100).toFixed(0);
-  const compare = compareHtml(d);
-  const rest = d.ranked.slice(3);
-  const fb = item.feedback;
-  const special = d.confident && SPECIAL[top.key];
+  const d = item.result;
+  if (!d.cases.length) {
+    panel.replaceChildren(h('div', {className: 'verdict'},
+      h('div', {className: 'lead', textContent: 'No egg case found'}),
+      h('div', {className: 'note', textContent:
+        `${pct(d.no_egg_case)}% sure there is no egg case in this photo. ` +
+        'Try a closer photograph of a single egg case.'})));
+    return;
+  }
 
-  panel.innerHTML = `
-    <div class="verdict ${d.confident ? 'confident' : ''}">
-      <div class="lead">${special ? special.lead : d.confident ? 'Identified' : 'Best guess only'}</div>
-      <div class="name">${top.name}</div>
-      <div class="latin">${top.latin}</div>
-      <div class="note">${d.confident
-        ? `${pct}% confident.${special ? ' ' + special.note : ''}`
-        : `${pct}% confident — not enough to call it. Compare the alternatives below.`}
-      </div>
-    </div>
-
-    ${compare}
-
-    <h2>Most likely</h2>
-    <div>${d.ranked.slice(0, 3).map((r, i) => rowHtml(r, i === 0)).join('')}</div>
-    <details><summary>Show the other ${rest.length}</summary>
-      <div>${rest.map(r => rowHtml(r, false)).join('')}</div>
-    </details>
-
-    <div class="feedback">
-      <h2>Was this right?</h2>
-      <div class="fb-buttons">
-        <button type="button" data-correct="yes" class="${fb.correct === true ? 'on' : ''}">
-          Correct<kbd>Y</kbd></button>
-        <button type="button" data-correct="no" class="${fb.correct === false ? 'on' : ''}">
-          Not correct<kbd>N</kbd></button>
-      </div>
-      <div id="correction" class="${fb.correct === false ? 'show' : ''}">
-        <label for="true-species">Choose the correct species</label>
-        <select id="true-species">
-          <option value="">Select a species…</option>
-          <optgroup label="The nine the model knows">
-            ${speciesOptions(SPECIES, fb)}
-          </optgroup>
-          <optgroup label="Also in the Shark Trust guide">
-            ${speciesOptions(OTHER_SPECIES, fb)}
-          </optgroup>
-          <option value="${OTHER_KEY}"${fb.label === OTHER_KEY ? ' selected' : ''}>Something else — type it in</option>
-        </select>
-        <div id="other-wrap" class="${fb.label === OTHER_KEY ? 'show' : ''}">
-          <label for="other-species">What was it?</label>
-          <input id="other-species" type="text" autocomplete="off" spellcheck="false"
-                 placeholder="Species name, or whatever you can say about it"
-                 value="${esc(fb.otherText || '')}">
-        </div>
-      </div>
-      <div class="fb-hint" id="fb-hint"></div>
-    </div>`;
-
-  if (d.segments?.cases) panel.prepend(casesBlock(d.segments.cases));
-
-  panel.querySelectorAll('.fb-buttons button').forEach(b =>
-    b.addEventListener('click', () => mark(b.dataset.correct === 'yes')));
-  const alts = panel.querySelector('details');
-  if (alts) alts.addEventListener('toggle', () => {
-    if (alts.open) track('alternatives_expanded', {species: top.name,
-                                                   confident: !!d.confident});
+  const outlined = d.cases.filter(c => c.outline);
+  const anyShown = outlined.some(c => !item.hidden.has(c.n));
+  const all = outlined.length > 1 && h('button', {type: 'button', className: 'linkbtn',
+    textContent: anyShown ? 'Hide all masks' : 'Show all masks'});
+  if (all) all.addEventListener('click', () => {
+    item.hidden = new Set(anyShown ? outlined.map(c => c.n) : []);
+    track('masks_toggled', {all: true, shown: !anyShown, cases: d.count});
+    renderPanel(); drawMasks();
   });
-  const sel = $('true-species');
-  if (sel) sel.addEventListener('change', () => {
-    const it = items[current];
-    it.feedback.label = sel.value || null;
-    if (sel.value !== OTHER_KEY) it.feedback.otherText = null;
-    $('other-wrap').classList.toggle('show', sel.value === OTHER_KEY);
-    renderStrip();
-    // "Something else" is only half an answer — wait for the words before recording it.
-    if (sel.value === OTHER_KEY) { $('other-species').focus(); return; }
-    if (!sel.value) return;
-    recordCorrection(it);
-  });
-  const other = $('other-species');
-  // change, not input: fires on Enter or on leaving the field, so a half-typed name
-  // is not saved and advanced past on every keystroke.
-  if (other) other.addEventListener('change', () => {
-    const it = items[current];
-    it.feedback.otherText = other.value.trim() || null;
-    renderStrip();
-    if (it.feedback.otherText) recordCorrection(it);
-  });
+  panel.replaceChildren(
+    h('div', {className: 'cases-head'},
+      h('h2', {textContent: d.count === 1 ? '1 egg case in this photo' : `${d.count} egg cases in this photo`}),
+      all),
+    ...d.cases.map((c, i) => caseCard(item, c, i)));
   showHint(item);
 }
 
-/* The select holds a key; "something else" holds whatever was typed. One reader for
-   both, so the tracking, the strip and what reaches the volume cannot disagree. */
-/* Each egg case the segmenter found, named on its own. Built with createElement: the
-   names and pictures come from the model's reply. */
-function casesBlock(cases) {
-  const el = (tag, cls, text) => Object.assign(document.createElement(tag),
-    cls ? {className: cls} : {}, text != null ? {textContent: text} : {});
-  const wrap = el('div', 'cases');
-  wrap.append(el('h2', null, `${cases.length} egg cases in this photo`));
-  for (const c of cases) {
-    const special = c.confident && SPECIAL[c.top];
-    const row = el('div', c.confident ? 'case confident' : 'case');
-    const img = el('img');
-    img.src = c.crop;
-    img.alt = `Egg case ${c.n}`;
-    const label = el('div', 'label');
-    label.append(el('span', 'num', String(c.n)), special ? special.lead : c.top_name);
-    const text = el('div');
-    text.append(label, el('div', 'sub', c.confident ? 'Identified' : 'Best guess only'));
-    row.append(img, text, el('div', 'pct', `${Math.round(c.confidence * 100)}%`));
-    wrap.append(row);
-  }
-  wrap.append(el('h2', null, 'The photo as a whole'));
-  return wrap;
+function caseCard(item, c, i) {
+  const open = i === item.sel, fb = fbOf(item, c.n);
+  const special = c.confident && SPECIAL[c.top];
+  const head = h('button', {type: 'button', className: 'case-head', 'aria-expanded': String(open)},
+    h('span', {className: 'num', textContent: c.n}),
+    cropThumb(item.dataUrl, c.box),
+    h('span', {className: 'what'},
+      h('span', {className: 'label', textContent: special ? special.lead : c.top_name}),
+      h('span', {className: 'sub', textContent:
+        `${c.confident ? 'Identified' : 'Best guess only'} · ${pct(c.confidence)}%`})));
+  head.addEventListener('click', () => select(i));
+
+  const shown = c.outline && !item.hidden.has(c.n);
+  const eye = c.outline && h('button', {type: 'button', className: shown ? 'eye on' : 'eye',
+    'aria-pressed': String(!!shown), textContent: shown ? 'Hide mask' : 'Show mask'});
+  if (eye) eye.addEventListener('click', () => toggleMask(item, c));
+  const mark = fb.correct !== null && h('span', {className: fb.correct ? 'fbmark yes' : 'fbmark no',
+    textContent: fb.correct ? '✓' : '✕', title: fb.correct ? 'Marked correct' : 'Marked not correct'});
+
+  const card = h('section', {className: `case${c.confident ? ' confident' : ''}${open ? ' open' : ''}`},
+    h('div', {className: 'case-top'}, head, mark, eye));
+  if (!open) return card;
+
+  const line = pct(item.result.threshold);
+  const where = c.outline ? '' : ' Named from the whole photo.';
+  const note = c.confident
+    ? `${pct(c.confidence)}% confident, at or above the ${line}% line.${special ? ' ' + special.note : ''}${where}`
+    : `${pct(c.confidence)}% confident, below the ${line}% line, so not called. ` +
+      `Compare the scores below.${where}`;
+  const rest = c.ranked.slice(3);
+  const alts = h('details', {}, h('summary', {textContent: `Show the other ${rest.length}`}),
+    h('div', {}, ...rest.map(r => scoreRow(r, false))));
+  alts.addEventListener('toggle', () => {
+    if (alts.open) track('alternatives_expanded', {species: c.top_name, confident: !!c.confident,
+                                                   case: c.n, cases: item.result.count});
+  });
+  card.append(h('div', {className: 'case-body'},
+    h('div', {className: 'latin note', textContent: c.ranked[0].latin}),
+    h('div', {className: 'note', textContent: note}),
+    compareBlock(c),
+    h('h2', {textContent: 'Scores'}),
+    h('div', {}, ...c.ranked.slice(0, 3).map((r, j) => scoreRow(r, j === 0))),
+    alts,
+    feedbackBlock(item, c, fb)));
+  return card;
 }
 
+function select(i) {
+  const item = items[current];
+  if (i === item.sel) return;
+  item.sel = i;
+  track('case_opened', {case: i + 1, cases: item.result.count});
+  renderPanel(); drawMasks();
+}
+
+function toggleMask(item, c) {
+  if (item.hidden.has(c.n)) item.hidden.delete(c.n); else item.hidden.add(c.n);
+  track('masks_toggled', {all: false, shown: !item.hidden.has(c.n), case: c.n, cases: item.result.count});
+  renderPanel(); drawMasks();
+}
+
+function speciesGroup(label, list, fb) {
+  return h('optgroup', {label}, ...list.map(sp =>
+    h('option', {value: sp.key, selected: fb.label === sp.key, textContent: `${sp.name} — ${sp.latin}`})));
+}
+
+function feedbackBlock(item, c, fb) {
+  const yes = h('button', {type: 'button', className: fb.correct === true ? 'on' : '', 'data-correct': 'yes'},
+    'Correct', h('kbd', {textContent: 'Y'}));
+  const no = h('button', {type: 'button', className: fb.correct === false ? 'on' : '', 'data-correct': 'no'},
+    'Not correct', h('kbd', {textContent: 'N'}));
+  yes.addEventListener('click', () => mark(true));
+  no.addEventListener('click', () => mark(false));
+
+  const sel = h('select', {id: 'true-species'},
+    h('option', {value: '', textContent: 'Select a species…'}),
+    speciesGroup('The nine the model knows', SPECIES, fb),
+    speciesGroup('Also in the Shark Trust guide', OTHER_SPECIES, fb),
+    h('option', {value: OTHER_KEY, selected: fb.label === OTHER_KEY,
+                 textContent: 'Something else — type it in'}));
+  const other = h('input', {id: 'other-species', type: 'text', autocomplete: 'off', spellcheck: false,
+    placeholder: 'Species name, or whatever you can say about it', value: fb.otherText || ''});
+  const otherWrap = h('div', {className: fb.label === OTHER_KEY ? 'other-wrap show' : 'other-wrap'},
+    h('label', {htmlFor: 'other-species', textContent: 'What was it?'}), other);
+  sel.addEventListener('change', () => {
+    fb.label = sel.value || null;
+    if (sel.value !== OTHER_KEY) fb.otherText = null;
+    otherWrap.classList.toggle('show', sel.value === OTHER_KEY);
+    renderStrip();
+    // "Something else" is only half an answer — wait for the words before recording it.
+    if (sel.value === OTHER_KEY) { other.focus(); return; }
+    if (sel.value) recordCorrection(item, c);
+  });
+  // change, not input: fires on Enter or on leaving the field, so a half-typed name
+  // is not saved and advanced past on every keystroke.
+  other.addEventListener('change', () => {
+    fb.otherText = other.value.trim() || null;
+    renderStrip();
+    if (fb.otherText) recordCorrection(item, c);
+  });
+
+  return h('div', {className: 'feedback'},
+    h('h2', {textContent: item.result.count > 1 ? `Was egg case ${c.n} right?` : 'Was this right?'}),
+    h('div', {className: 'fb-buttons'}, yes, no),
+    h('div', {className: fb.correct === false ? 'correction show' : 'correction'},
+      h('label', {htmlFor: 'true-species', textContent: 'Choose the correct species'}), sel, otherWrap),
+    h('div', {className: 'fb-hint', id: 'fb-hint'}));
+}
+
+/* The select holds a key; "something else" holds whatever was typed. One reader for
+   both, so the tracking, the strip and what reaches the database cannot disagree. */
 function correctionValue(fb) {
   return fb.label === OTHER_KEY ? fb.otherText : fb.label;
 }
 
-function recordCorrection(it) {
-  const value = correctionValue(it.feedback);
+function recordCorrection(item, c) {
+  const value = correctionValue(fbOf(item, c.n));
   if (!value) return;
   track('correction_given', {
-    predicted: it.result.ranked[0].name, corrected_to: value,
-    confidence: +it.result.ranked[0].prob.toFixed(3),
+    predicted: c.top_name, corrected_to: value, confidence: +c.confidence.toFixed(3),
+    case: c.n, cases: item.result.count,
     // A species the model has no class for is a different failure from confusing two
     // it does know, and only the first is a reason to widen the training set.
     off_list: !SPECIES.some(sp => sp.key === value),
-    typed_in: it.feedback.label === OTHER_KEY,
+    typed_in: fbOf(item, c.n).label === OTHER_KEY,
     // The most valuable signal in the whole test: which pairs the model confuses.
-    confusion: `${it.result.top} → ${value}`,
+    confusion: `${c.top} → ${value}`,
   });
-  sendFeedback(it);
-  if (current < items.length - 1) setTimeout(() => go(current + 1), 250);
+  sendFeedback(item, c);
+  advance(item);
+}
+
+/* After an answer: the next unanswered egg case in this photo, else the next photo. */
+function advance(item) {
+  const next = cases(item).findIndex((c, i) => i > item.sel && fbOf(item, c.n).correct === null);
+  setTimeout(() => {
+    if (items[current] !== item) return;
+    if (next !== -1) select(next);
+    else if (current < items.length - 1) go(current + 1);
+  }, 250);
 }
 
 function showHint(item) {
-  const hint = $('fb-hint');
-  if (!hint) return;
-  if (item.feedback.correct === null) hint.textContent = '';
-  else if (item.stored === true) hint.textContent = 'Saved.';
-  else if (item.stored === false) hint.textContent = `Not saved — ${item.storedReason || 'no submission on record'}.`;
+  const hint = $('fb-hint'), c = cases(item)[item.sel];
+  if (!hint || !c) return;
+  const stored = item.stored[c.n];
+  if (fbOf(item, c.n).correct === null) hint.textContent = '';
+  else if (stored === true) hint.textContent = 'Saved.';
+  else if (stored === false) hint.textContent = `Not saved — ${item.storedReason[c.n] || 'no submission on record'}.`;
   else hint.textContent = 'Saving…';
 }
 
 function mark(correct) {
-  const item = items[current];
-  if (item.state !== 'done') return;
-  item.feedback.correct = correct;
+  const item = items[current], c = cases(item)[item.sel];
+  if (item.state !== 'done' || !c) return;
+  const fb = fbOf(item, c.n);
+  fb.correct = correct;
   // "Correct" is self-describing; "not correct" waits for the species picker.
-  item.feedback.label = correct ? item.result.top : null;
-  item.feedback.otherText = null;
+  fb.label = correct ? c.top : null;
+  fb.otherText = null;
   renderStrip(); renderPanel();
-  const top = item.result.ranked[0];
-  track('feedback_given', {
-    correct, predicted: top.name, confidence: +top.prob.toFixed(3),
-    confident: !!item.result.confident,
-  });
-  sendFeedback(item);
-  if (correct && current < items.length - 1) setTimeout(() => go(current + 1), 250);
+  track('feedback_given', {correct, predicted: c.top_name, confidence: +c.confidence.toFixed(3),
+                           confident: !!c.confident, case: c.n, cases: item.result.count});
+  sendFeedback(item, c);
+  if (correct) advance(item);
+  else $('true-species').focus();
 }
 
-async function sendFeedback(item) {
-  item.stored = undefined;
+async function sendFeedback(item, c) {
+  const fb = fbOf(item, c.n);
+  item.stored[c.n] = undefined;
   showHint(item);
   try {
     const res = await fetch('/api/feedback', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        id: item.result.id,
-        correct: item.feedback.correct,
-        user_species: correctionValue(item.feedback),
-      }),
+      body: JSON.stringify({id: item.result.id, n: c.n, correct: fb.correct,
+                            user_species: correctionValue(fb)}),
     });
     const data = await res.json();
-    item.stored = !!data.stored;
-    item.storedReason = data.reason || data.error || null;
+    item.stored[c.n] = !!data.stored;
+    item.storedReason[c.n] = data.reason || data.error || null;
   } catch (err) {
-    item.stored = false;
-    item.storedReason = err.message;
+    item.stored[c.n] = false;
+    item.storedReason[c.n] = err.message;
   }
-  showHint(item);
+  if (items[current] === item) showHint(item);
 }
 </script>
 </body>

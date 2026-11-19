@@ -127,7 +127,7 @@ class Handler(BaseHTTPRequestHandler):
             # Local runs never stored the photo, so there is nothing to attach
             # this to. Say so rather than pretending it saved.
             verdict = "correct" if req.get("correct") else f"wrong -> {req.get('user_species')}"
-            print(f"  feedback: {verdict}  (not stored — local)", flush=True)
+            print(f"  feedback on case {req.get('n')}: {verdict}  (not stored — local)", flush=True)
             self._json(200, {"stored": False, "reason": "local testing does not store photos"})
             return
 
@@ -154,8 +154,9 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         result = json.loads(body)
-        print(f"  {result['top_name']:<24} {result['confidence'] * 100:5.1f}%  "
-              f"{result['latency_ms']}ms  ({result['model_version']})", flush=True)
+        names = ", ".join(f"{c['top_name']} {c['confidence'] * 100:.1f}%" for c in result["cases"])
+        print(f"  {result['count']} case(s): {names or '-'}  {result['latency_ms']}ms  "
+              f"({result['model_version']}, segmenter {result['segmenter']['status']})", flush=True)
         self._send(200, body, "application/json")
 
 
