@@ -36,6 +36,8 @@ $('theme').addEventListener('click', () => {
   localStorage.setItem('eggic-theme', dark ? 'light' : 'dark');
 });
 
+$('zoom').addEventListener('click', () => $('zoom').close());
+
 /* ---------- login ---------- */
 $('login-form').addEventListener('submit', async e => {
   e.preventDefault();
@@ -83,19 +85,14 @@ function render(d, urls) {
     'Every photo has one agreed answer, and both are scored against it.';
 
   $('tiles').replaceChildren(
-    tile('People', pct(p.right, p.answers),
-      `${p.right} of ${p.answers} answers right. Each person got between ${p.min} and ${p.max} of ${d.photos}.`),
-    tile('Identifier, best guess', pct(d.model.right, d.photos),
-      `${d.model.right} of ${d.photos} right when it must name a species for every photo.`),
-    ...d.lines.map(l => tile(`Identifier at a ${Math.round(l.at * 100)}% line`,
-      pct(l.right, l.answered),
-      `Named ${l.answered} of ${d.photos} photos and got ${l.right} of those right. "Not sure" on the other ${d.photos - l.answered}.`)),
-  );
-
-  $('lines').replaceChildren(
-    row('th', ['Line', 'Photos named', 'Right', 'Wrong', '"Not sure"']),
-    ...d.lines.map(l => row('td', [`${Math.round(l.at * 100)}%`,
-      `${l.answered} (${pct(l.answered, d.photos)})`, l.right, l.answered - l.right, d.photos - l.answered])),
+    tile('People', `${pct(p.right, p.answers)} right`,
+      `${p.right} of ${p.answers} answers. Each person got between ${p.min} and ${p.max} of ${d.photos}.`),
+    tile('Identifier, best guess', `${pct(d.model.right, d.photos)} right`,
+      `${d.model.right} of ${d.photos}, naming a species for every photo.`),
+    ...d.lines.map(l => tile(`Identifier, ${Math.round(l.at * 100)}% sure or more`,
+      `${pct(l.right, l.answered)} right`,
+      `Named ${l.answered} of ${d.photos} photos (${pct(l.answered, d.photos)}) and got ${l.right} right. ` +
+      `"Not sure" on the other ${d.photos - l.answered}.`)),
   );
 
   const rate = s => s.people_right / s.people_answers;
@@ -136,7 +133,11 @@ function example(x, url) {
   const m = x.model;
   const call = `${NAME[m.top] ?? m.top}, ${Math.round(m.confidence * 100)}% confident`;
   const img = el('img', { src: url, alt: `Egg case: ${NAME[x.true]}`, loading: 'lazy' });
-  img.addEventListener('click', () => window.open(url, '_blank', 'noopener'));
+  img.addEventListener('click', () => {
+    $('zoom-img').src = url;
+    $('zoom-img').alt = img.alt;
+    $('zoom').showModal();
+  });
   return el('article', { className: 'ex' }, img,
     el('div', { className: 'body' },
       el('div', { className: 'tag', textContent: x.tag }),
