@@ -1,0 +1,199 @@
+{
+ "photos": 150,
+ "people": {
+  "count": 3,
+  "right": 407,
+  "answers": 450,
+  "min": 124,
+  "max": 142
+ },
+ "model": {
+  "right": 142
+ },
+ "lines": [
+  {
+   "at": 0.9,
+   "answered": 129,
+   "right": 128
+  },
+  {
+   "at": 0.95,
+   "answered": 116,
+   "right": 116
+  }
+ ],
+ "species": [
+  {
+   "key": "BlondeRay",
+   "photos": 26,
+   "people_right": 72,
+   "people_answers": 78,
+   "model_right": 25
+  },
+  {
+   "key": "CuckooRay",
+   "photos": 9,
+   "people_right": 24,
+   "people_answers": 27,
+   "model_right": 9
+  },
+  {
+   "key": "FlapperSkate",
+   "photos": 9,
+   "people_right": 27,
+   "people_answers": 27,
+   "model_right": 9
+  },
+  {
+   "key": "Nursehound",
+   "photos": 12,
+   "people_right": 35,
+   "people_answers": 36,
+   "model_right": 12
+  },
+  {
+   "key": "SmallEyedRay",
+   "photos": 16,
+   "people_right": 48,
+   "people_answers": 48,
+   "model_right": 16
+  },
+  {
+   "key": "SmallSpottedCatshark",
+   "photos": 12,
+   "people_right": 32,
+   "people_answers": 36,
+   "model_right": 11
+  },
+  {
+   "key": "SpottedRay",
+   "photos": 22,
+   "people_right": 53,
+   "people_answers": 66,
+   "model_right": 22
+  },
+  {
+   "key": "ThornbackRay",
+   "photos": 26,
+   "people_right": 69,
+   "people_answers": 78,
+   "model_right": 23
+  },
+  {
+   "key": "UndulateRay",
+   "photos": 18,
+   "people_right": 47,
+   "people_answers": 54,
+   "model_right": 15
+  }
+ ],
+ "mixups": [
+  {
+   "a": "SpottedRay",
+   "b": "UndulateRay",
+   "n": 19
+  },
+  {
+   "a": "BlondeRay",
+   "b": "ThornbackRay",
+   "n": 10
+  },
+  {
+   "a": "Nursehound",
+   "b": "SmallSpottedCatshark",
+   "n": 5
+  }
+ ],
+ "examples": [
+  {
+   "image_path": "a8c504e270a3.jpg",
+   "true": "BlondeRay",
+   "people": [
+    "ThornbackRay",
+    "ThornbackRay",
+    "UndulateRay"
+   ],
+   "model": {
+    "top": "BlondeRay",
+    "confidence": 0.97
+   },
+   "tag": "People found this hard",
+   "text": "All three people chose another ray. The identifier named it with high confidence."
+  },
+  {
+   "image_path": "a5e65e416214.jpg",
+   "true": "SpottedRay",
+   "people": [
+    "SpottedRay",
+    "UndulateRay",
+    "UndulateRay"
+   ],
+   "model": {
+    "top": "SpottedRay",
+    "confidence": 0.967
+   },
+   "tag": "People found this hard",
+   "text": "Spotted and Undulate were the pair people mixed up most. The identifier named it with high confidence."
+  },
+  {
+   "image_path": "016087ba450c.jpg",
+   "true": "UndulateRay",
+   "people": [
+    "UndulateRay",
+    "UndulateRay",
+    "UndulateRay"
+   ],
+   "model": {
+    "top": "SpottedRay",
+    "confidence": 0.698
+   },
+   "tag": "The identifier found this hard",
+   "text": "Everyone named it. The identifier leaned to Spotted Ray but was far from sure, so it would answer \"not sure\"."
+  },
+  {
+   "image_path": "5a4be0102cec.jpg",
+   "true": "ThornbackRay",
+   "people": [
+    "ThornbackRay",
+    "ThornbackRay",
+    "ThornbackRay"
+   ],
+   "model": {
+    "top": "BlondeRay",
+    "confidence": 0.587
+   },
+   "tag": "The identifier found this hard",
+   "text": "Everyone named it. The identifier's best guess was Blonde Ray, well below its line, so it would answer \"not sure\"."
+  },
+  {
+   "image_path": "8f8e21ab2077.jpg",
+   "true": "BlondeRay",
+   "people": [
+    "BlondeRay",
+    "BlondeRay",
+    "BlondeRay"
+   ],
+   "model": {
+    "top": "ThornbackRay",
+    "confidence": 0.894
+   },
+   "tag": "A close call for the identifier",
+   "text": "Everyone named it. The identifier's guess was wrong but fairly confident, just under a 90% line, so it would still answer \"not sure\"."
+  },
+  {
+   "image_path": "c708ea9d632a.jpg",
+   "true": "ThornbackRay",
+   "people": [
+    "SpottedRay",
+    "UndulateRay",
+    "UndulateRay"
+   ],
+   "model": {
+    "top": "SpottedRay",
+    "confidence": 0.485
+   },
+   "tag": "Hard for everyone",
+   "text": "Nobody, person or identifier, matched the agreed answer here. The identifier was below 50%."
+  }
+ ]
+}
