@@ -69,6 +69,13 @@
         padding: 10px 22px;
         border-bottom: 1px solid var(--line);
       }
+      .home {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        color: inherit;
+        text-decoration: none;
+      }
       header .logo {
         height: 44px;
         width: auto;
@@ -352,16 +359,18 @@
   </head>
   <body>
     <header>
-      <img
-        class="logo"
-        src="/assets/shark_trust.png"
-        alt="Shark Trust"
-        onerror="this.remove()"
-      />
-      <div class="brand">
-        <span class="org">Shark Trust</span>
-        <h1>Egg Case Test Results</h1>
-      </div>
+      <a class="home" href="/" title="Back to the identifier">
+        <img
+          class="logo"
+          src="/assets/shark_trust.png"
+          alt="Shark Trust"
+          onerror="this.remove()"
+        />
+        <div class="brand">
+          <span class="org">Shark Trust</span>
+          <h1>Egg Case Test Results</h1>
+        </div>
+      </a>
       <div class="grow"></div>
       <button class="hbtn" id="signout" type="button" style="display: none">
         Sign out
