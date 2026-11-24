@@ -123,7 +123,8 @@ Every photo is segmented before it is named (EggIC `multispecies/segment.py`: SA
 vit_h proposes masks, a keep head keeps whole egg cases). When it finds two or more
 cleanly, each is cropped and named on its own; more than eight (`MAX_CASES` in
 `modal/app.py`) is `too_many` and none is named; otherwise the whole photo is named as one
-case, outlined if the segmenter found exactly one. `"segment": false` skips it. The
+case, outlined if the segmenter found exactly one. When the segmenter is `unsure` of the
+count, that case is never `confident`, however high it scores. `"segment": false` skips it. The
 head and the crop fill are copied, so a retrain in EggIC changes nothing until recopied:
 
 ```bash
