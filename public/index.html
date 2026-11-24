@@ -198,6 +198,7 @@
   .eye.on { border-color: var(--accent); color: var(--accent); }
   .case-body { padding: 4px 14px 14px; border-top: 1px solid var(--line); }
   .case-body .note { font-size: 13px; color: var(--dim); margin: 10px 0 12px; }
+  .seg-note { font-size: 13px; color: var(--dim); margin: 2px 0 12px; }
   .case-body .latin { font-style: italic; }
 
   .feedback { margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line); }
@@ -877,11 +878,17 @@ function renderPanel() {
   });
   panel.replaceChildren(
     h('div', {className: 'cases-head'},
-      h('h2', {textContent: d.count === 1 ? '1 egg case in this photo' : `${d.count} egg cases in this photo`}),
+      h('h2', {textContent: unsure(d) ? 'Not sure how many egg cases'
+        : d.count === 1 ? '1 egg case in this photo' : `${d.count} egg cases in this photo`}),
       all),
+    unsure(d) && h('div', {className: 'seg-note', textContent: 'The egg case finder could not tell ' +
+      'how many egg cases are in this photo, so the whole photo is named once, as a best guess. ' +
+      'Check the count yourself.'}),
     ...d.cases.map((c, i) => caseCard(item, c, i)));
   showHint(item);
 }
+
+const unsure = d => d.segmenter.status === 'unsure';
 
 function caseCard(item, c, i) {
   const open = i === item.sel, fb = fbOf(item, c.n);
@@ -910,6 +917,9 @@ function caseCard(item, c, i) {
   const where = c.outline ? '' : ' Named from the whole photo.';
   const note = c.confident
     ? `${pct(c.confidence)}% confident, at or above the ${line}% line.${special ? ' ' + special.note : ''}${where}`
+    : unsure(item.result) && c.confidence >= item.result.threshold
+    ? `${pct(c.confidence)}% confident, but the egg case finder was unsure of the count, so not called. ` +
+      `Compare the scores below.${where}`
     : `${pct(c.confidence)}% confident, below the ${line}% line, so not called. ` +
       `Compare the scores below.${where}`;
   const rest = c.ranked.slice(3);

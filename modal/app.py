@@ -15,7 +15,8 @@ Every photo is segmented first (EggIC ``multispecies/segment.py``, SAM + keep he
 and the reply is always the same shape: a list of egg cases, each with its outline,
 its answer and every class's score (README, "What the API returns"). Two or more found
 cleanly → each is cropped and named on its own; more than ``MAX_CASES`` → none is
-named; otherwise the whole photo is named.
+named; otherwise the whole photo is named, and when the segmenter was unsure of the
+count that answer is a best guess however high it scores.
 
 Submissions are written to Supabase (photo and masks to the ``submissions`` bucket,
 a row to ``submissions`` and one per egg case to ``cases``) only when the caller asks
@@ -325,6 +326,9 @@ class Model:
         # means none was found, and no_egg_case says how sure that call was.
         none = [c for c in cases if c["confident"] and c["top"] == "NoEggCase"]
         cases = [c for c in cases if not (c["confident"] and c["top"] == "NoEggCase")]
+        if seg["status"] == "unsure":
+            for c in cases:
+                c["confident"] = False  # the count is in doubt, so nothing is called
         masks = [c.pop("mask") for c in cases]
         for n, (c, m) in enumerate(zip(cases, masks), 1):
             c.update(n=n, outline=_outline(m) if m is not None else None, mask_path=None)
