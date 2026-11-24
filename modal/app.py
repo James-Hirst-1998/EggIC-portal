@@ -14,7 +14,8 @@ network cannot drift from the weights that produced it.
 Every photo is segmented first (EggIC ``multispecies/segment.py``, SAM + keep head),
 and the reply is always the same shape: a list of egg cases, each with its outline,
 its answer and every class's score (README, "What the API returns"). Two or more found
-cleanly → each is cropped and named on its own; otherwise the whole photo is named.
+cleanly → each is cropped and named on its own; more than ``MAX_CASES`` → none is
+named; otherwise the whole photo is named.
 
 Submissions are written to Supabase (photo and masks to the ``submissions`` bucket,
 a row to ``submissions`` and one per egg case to ``cases``) only when the caller asks
@@ -42,6 +43,7 @@ HERE = Path(__file__).resolve().parent
 MODEL_VERSIONS = [v.strip() for v in
                   os.environ.get("MODEL_VERSIONS", "s2_dinov2,s2_dinov3").split(",") if v.strip()]
 CONFIDENT_AT = 0.95  # clear of the worst mistake seen on the held-out photos (93.7%)
+MAX_CASES = 8  # more than this in one photo: "too_many", and nothing goes to the classifier
 SAM_CKPT = "sam_vit_h_4b8939.pth"
 SAM_URL = "https://dl.fbaipublicfiles.com/segment_anything"
 KEEP_BACKBONE = "vit_large_patch14_dinov2.lvd142m"   # multispecies.keep.Backbone.NAME
@@ -206,16 +208,17 @@ class Model:
     def _segment(self, raw: bytes) -> dict:
         """The segmenter's verdict and, when it is clean, each egg case's box and mask.
 
-        Only "ok" is trusted; "too_many", "unsure" and "no_egg_case" photos are named
-        whole, as they were before segmentation existed. Cases come top to bottom.
+        Only "ok" is trusted. More than ``MAX_CASES`` is "too_many" here even when the
+        segmenter (which stops at 10) kept them all. Cases come top to bottom.
         """
         from multispecies import crops, segment
 
         t0 = time.time()
         img = segment.prepare(raw)
         seg = segment.segment(img, self.sam, self.keep_backbone, self.keep_head, self.fill)
-        out = {"status": seg["status"], "found": []}
-        if seg["status"] == "ok":
+        status = "too_many" if seg["status"] == "ok" and seg["count"] > MAX_CASES else seg["status"]
+        out = {"status": status, "found": []}
+        if status == "ok":
             shape = tuple(seg["size"])
             h, w = shape
             masks = [segment.unrle(c["mask"], shape) for c in seg["cases"]]
@@ -309,7 +312,9 @@ class Model:
         seg = (self._segment(raw) if req.get("segment", True)
                else {"status": "skipped", "seconds": 0.0, "found": []})
         found = seg["found"]
-        if len(found) < 2:
+        if seg["status"] == "too_many":
+            found = []  # too many to name one by one: the reply says so and names none
+        elif len(found) < 2:
             # One case or none found cleanly: name the whole photo, as the model was trained.
             found = [found[0] if found else {"box": None, "mask": None, "crop": None}]
             found[0]["crop"] = image
@@ -329,7 +334,7 @@ class Model:
             "model_version": primary,
             "threshold": CONFIDENT_AT,
             "latency_ms": round((time.time() - t0) * 1000),
-            "segmenter": {"status": seg["status"], "seconds": seg["seconds"]},
+            "segmenter": {"status": seg["status"], "seconds": seg["seconds"], "max_cases": MAX_CASES},
             "count": len(cases),
             "no_egg_case": none[0]["confidence"] if none and not cases else None,
             "cases": [{k: c[k] for k in CASE_FIELDS} for c in cases],

@@ -849,6 +849,14 @@ function renderPanel() {
   }
 
   const d = item.result;
+  if (d.segmenter.status === 'too_many') {
+    panel.replaceChildren(h('div', {className: 'verdict'},
+      h('div', {className: 'lead', textContent: 'Too many egg cases'}),
+      h('div', {className: 'note', textContent:
+        `More than ${d.segmenter.max_cases} egg cases in this photo, too many to name one by one. ` +
+        `Photograph them in groups of ${d.segmenter.max_cases} or fewer.`})));
+    return;
+  }
   if (!d.cases.length) {
     panel.replaceChildren(h('div', {className: 'verdict'},
       h('div', {className: 'lead', textContent: 'No egg case found'}),
