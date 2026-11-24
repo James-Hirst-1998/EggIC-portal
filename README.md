@@ -121,7 +121,8 @@ The deploy fails loudly rather than serving a checkout that cannot build DINOv3.
 
 Every photo is segmented before it is named (EggIC `multispecies/segment.py`: SAM
 vit_h proposes masks, a keep head keeps whole egg cases). When it finds two or more
-cleanly, each is cropped and named on its own; otherwise the whole photo is named as one
+cleanly, each is cropped and named on its own; more than eight (`MAX_CASES` in
+`modal/app.py`) is `too_many` and none is named; otherwise the whole photo is named as one
 case, outlined if the segmenter found exactly one. `"segment": false` skips it. The
 head and the crop fill are copied, so a retrain in EggIC changes nothing until recopied:
 
@@ -145,7 +146,7 @@ an empty list.
   "model_version": "ensemble",        // the arm that answered
   "threshold": 0.95,                  // the accept line: at or above it, a case is "confident"
   "latency_ms": 2140,
-  "segmenter": {"status": "ok", "seconds": 1.8},  // ok | no_egg_case | too_many | unsure | skipped
+  "segmenter": {"status": "ok", "seconds": 1.8, "max_cases": 8},  // ok | no_egg_case | too_many (cases empty) | unsure | skipped
   "count": 2,
   "no_egg_case": null,                // when cases is empty: how sure the model was there is none
   "cases": [
